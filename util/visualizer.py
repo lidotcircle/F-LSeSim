@@ -3,13 +3,91 @@ import os
 import sys
 import ntpath
 import time
+import torch
+import GPUtil
 from . import util, html
 from subprocess import Popen, PIPE
+from util.tdlogger import TdLogger
+from torchvision.utils import save_image, make_grid
 
 if sys.version_info[0] == 2:
     VisdomExceptionBase = Exception
 else:
     VisdomExceptionBase = ConnectionError
+
+
+os.makedirs("helloimages", exist_ok=True)
+class WDVisualizer():
+    def __init__(self, opt) -> None:
+        prefix = opt.logger_prefix
+        if prefix is None or prefix == '':
+            prefix = f"[{opt.name}-" + time.strftime("%m-%d %H:%M:%S", time.localtime()) + "]"
+        self.logger = TdLogger(opt.logger_endpoint, f"[{opt.name}]", 1, ("admin", "123456"), group_prefix=prefix, disabled=opt.disable_logger)
+        self.log_name = f"{opt.name}.log"
+        self.opt = opt
+
+    def print_current_losses(self, epoch, iters, losses, t_comp, t_data):
+        """print current losses on console; also save the losses to the disk
+
+        Parameters:
+            epoch (int) -- current epoch
+            iters (int) -- current training iteration during this epoch (reset to 0 at the end of every epoch)
+            losses (OrderedDict) -- training losses stored in the format of (name, float) pairs
+            t_comp (float) -- computational time per data point (normalized by batch_size)
+            t_data (float) -- data loading time per data point (normalized by batch_size)
+        """
+        message = '(epoch: %d, iters: %d, time: %.3f, data: %.3f) ' % (epoch, iters, t_comp, t_data)
+        for k, v in losses.items():
+            message += '%s: %.3f ' % (k, v)
+
+        print(message)  # print the message
+        with open(self.log_name, "a") as log_file:
+            log_file.write('%s\n' % message)  # save the message
+
+    def send_gpuinfo(self):
+        gpus = GPUtil.getGPUs()
+        gpu_loadinfo = {}
+        gpu_meminfo = {}
+        for i in range(0, len(gpus)):
+            gpu = gpus[i]
+            gpu_loadinfo["GPU" + str(i) + " Load"] = gpu.load
+            gpu_meminfo["GPU" + str(i) + " MemUsed"] = gpu.memoryUsed
+            gpu_meminfo["GPU" + str(i) + " MemFree"] = gpu.memoryFree
+            gpu_meminfo["GPU" + str(i) + " MemTotal"] = gpu.memoryTotal
+        self.logger.send(gpu_loadinfo, "gpuload_info")
+        self.logger.send(gpu_meminfo,  "gpumem_info")
+
+    def plot_current_losses(self, epoch, counter_ratio, losses):
+        self.logger.send(losses)
+        self.send_gpuinfo()
+
+    def display_current_results(self, visuals, epoch, save_result):
+        batch_size = visuals['real_A'].shape[0]
+        if batch_size > 5:
+            for _, k in enumerate(visuals):
+                v = visuals[k]
+                if isinstance(v, torch.Tensor) and len(v.shape) > 0 and v.size(0) == batch_size:
+                    visuals[k] = v[:5]
+            batch_size = 5
+        
+        image_name_list = [ 'real_A', 'fake_B', 'rec_A', 'idt_B', 'real_B', 'fake_A', 'rec_B', 'idt_A']
+        image_list = []
+        for name in image_name_list:
+            if name in visuals:
+                img: torch.Tensor = visuals[name]
+                if img.size(0) < batch_size:
+                    img = torch.cat([
+                        img,
+                        torch.zeros(
+                            (batch_size - img.size(0), img.size(1), img.size(2), img.size(3)),
+                            dtype=img.dtype).to(img.device)], dim=0)
+                image_list.append(img)
+
+        image_tensor = torch.cat(image_list, dim=0)
+        image = make_grid(image_tensor, nrow = batch_size, normalize = True)
+        image_path = "%s/%s.png" % ("helloimages", epoch)
+        save_image(image, image_path)
+        self.logger.sendBlobFile(image_path, "%s.png" % (epoch), "/validation_image/%s-%s/%s.png" % (self.logger.group_prefix, "hellodataset", epoch), "validation_image")
 
 
 def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256):
@@ -42,7 +120,6 @@ def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256):
         links.append(image_name)
     webpage.add_images(ims, txts, links, width=width)
 
-
 class Visualizer():
     """This class includes several functions that can display/save images and print/save logging information.
 
@@ -73,7 +150,11 @@ class Visualizer():
             import visdom
             self.plot_data = {}
             self.ncols = opt.display_ncols
-            self.vis = visdom.Visdom(server=opt.display_server, port=opt.display_port, env=opt.display_env)
+            if "tensorboard_base_url" not in os.environ:
+                self.vis = visdom.Visdom(server=opt.display_server, port=opt.display_port, env=opt.display_env)
+            else:
+                self.vis = visdom.Visdom(port=2004,
+                                         base_url=os.environ['tensorboard_base_url'] + '/visdom')
             if not self.vis.check_connection():
                 self.create_visdom_connections()
 
@@ -138,8 +219,8 @@ class Visualizer():
                 if label_html_row != '':
                     label_html += '<tr>%s</tr>' % label_html_row
                 try:
-                    self.vis.images(images, nrow=ncols, win=self.display_id + 1,
-                                    padding=2, opts=dict(title=title + ' images'))
+                    self.vis.images(images, ncols, 2, self.display_id + 1,
+                                    None, dict(title=title + ' images'))
                     label_html = '<table>%s</table>' % label_html
                     self.vis.text(table_css + label_html, win=self.display_id + 2,
                                   opts=dict(title=title + ' labels'))
@@ -151,8 +232,12 @@ class Visualizer():
                 try:
                     for label, image in visuals.items():
                         image_numpy = util.tensor2im(image)
-                        self.vis.image(image_numpy.transpose([2, 0, 1]), opts=dict(title=label),
-                                       win=self.display_id + idx)
+                        self.vis.image(
+                            image_numpy.transpose([2, 0, 1]),
+                            self.display_id + idx,
+                            None,
+                            dict(title=label)
+                        )
                         idx += 1
                 except VisdomExceptionBase:
                     self.create_visdom_connections()
@@ -166,7 +251,7 @@ class Visualizer():
                 util.save_image(image_numpy, img_path)
 
             # update website
-            webpage = html.HTML(self.web_dir, 'Experiment name = %s' % self.name, refresh=1)
+            webpage = html.HTML(self.web_dir, 'Experiment name = %s' % self.name, refresh=0)
             for n in range(epoch, 0, -1):
                 webpage.add_header('epoch [%d]' % n)
                 ims, txts, links = [], [], []

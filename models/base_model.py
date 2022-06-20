@@ -3,6 +3,8 @@ import torch
 from collections import OrderedDict
 from abc import ABC, abstractmethod
 from . import networks
+from metrics.all_score import calculate_scores_given_paths
+from util.translate_images import translate_images
 
 
 class BaseModel(ABC):
@@ -238,3 +240,42 @@ class BaseModel(ABC):
             if net is not None:
                 for param in net.parameters():
                     param.requires_grad = requires_grad
+
+    def generate_visuals_for_evaluation(self, data, mode):
+        return {}
+
+    def translate_A2B(self, image):
+        netG: torch.nn.Module = None
+        netG_alias = ['netG', 'netG_A']
+        for alias in netG_alias:
+            if hasattr(self, alias):
+                netG = getattr(self, alias)
+                break
+        if netG is not None:
+            with torch.no_grad():
+                ans = netG(image)
+                if isinstance(ans, tuple):
+                    ans = ans[0]
+                return ans
+
+    def translate_test_images(self, epoch = 0):
+        real_imgs_dir = os.path.join(self.opt.dataroot, 'testB')
+        src_dir = os.path.join(self.opt.dataroot, "testA")
+        tgt_dir = "%s_eval_%s" % (src_dir, epoch)
+        translate_images(self.netG, src_dir, tgt_dir, self.device)
+        return real_imgs_dir, tgt_dir
+
+    def eval_metrics(self, epoch = 0) -> dict:
+        real_imgs_dir, generated_imgs_dir = self.translate_test_images(epoch)
+        if generated_imgs_dir is None:
+            return {}
+
+        result = calculate_scores_given_paths([generated_imgs_dir, real_imgs_dir], device=self.device, batch_size=50, dims=2048, use_fid_inception=True)
+        result = result[0]
+        _, kid, fid = result
+        kid_m, kid_std = kid
+        ans = {}
+        ans['FID'] = fid
+        ans['KID'] = kid_m
+        ans['KID_std'] = kid_std
+        return ans

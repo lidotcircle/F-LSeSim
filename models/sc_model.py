@@ -1,5 +1,7 @@
 import torch
 import itertools
+
+from zmq import PROTOCOL_ERROR_ZMTP_MALFORMED_COMMAND_READY
 from util.image_pool import ImagePool
 from .base_model import BaseModel
 from . import networks
@@ -246,3 +248,11 @@ class SCModel(BaseModel):
             self.criterionSpatial.update_init_()
 
         return total_loss / n_layers
+    
+    def compute_visuals(self):
+        super().compute_visuals()
+        pred_fake_B = self.netD(self.fake_B)
+        pred_real_B = self.netD(self.real_B)
+        self.val_loss_G = self.criterionGAN(pred_fake_B, True)
+        self.val_loss_D_real = self.criterionGAN(pred_real_B, True)
+        self.val_loss_D_fake = self.criterionGAN(pred_fake_B, False)

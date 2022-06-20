@@ -9,6 +9,15 @@ class TrainOptions(BaseOptions):
 
     def initialize(self, parser):
         parser = BaseOptions.initialize(self, parser)
+        # logger
+        parser.add_argument('--logger_endpoint', type=str , default="http://192.168.44.43:5445", help='logger endpoint')
+        parser.add_argument('--logger_prefix',   type=str,  default="", help='logger group prefix')
+        parser.add_argument('--disable_logger',  type=bool, default=False, help='logger endpoint')
+
+        # metrics evaluation
+        parser.add_argument('--metric_start_epoch', type=int, default=1, help='start epoch of evaluation metrics')
+        parser.add_argument('--metric_eval_freq', type=int, default=10, help='metrics evaluation frequency')
+
         # visdom and HTML visualization parameters
         parser.add_argument('--display_freq', type=int, default=400, help='frequency of showing training results on screen')
         parser.add_argument('--display_ncols', type=int, default=4, help='if positive, display all images in a single visdom web panel with certain number of images per row.')
@@ -17,7 +26,7 @@ class TrainOptions(BaseOptions):
         parser.add_argument('--display_env', type=str, default='main', help='visdom display environment name (default is "main")')
         parser.add_argument('--display_port', type=int, default=8097, help='visdom port of the web display')
         parser.add_argument('--update_html_freq', type=int, default=1000, help='frequency of saving training results to html')
-        parser.add_argument('--print_freq', type=int, default=100, help='frequency of showing training results on console')
+        parser.add_argument('--print_freq', type=int, default=10, help='frequency of showing training results on console')
         parser.add_argument('--no_html', action='store_true', help='do not save intermediate training results to [opt.checkpoints_dir]/[opt.name]/web/')
         # network saving and loading parameters
         parser.add_argument('--save_latest_freq', type=int, default=5000, help='frequency of saving the latest results')
@@ -26,6 +35,7 @@ class TrainOptions(BaseOptions):
         parser.add_argument('--continue_train', action='store_true', help='continue training: load the latest model')
         parser.add_argument('--epoch_count', type=int, default=1, help='the starting epoch count, we save the model by <epoch_count>, <epoch_count>+<save_latest_freq>, ...')
         parser.add_argument('--phase', type=str, default='train', help='train, val, test, etc')
+        parser.add_argument('--val_batch_size', type=int, default=5, help='validation batch size')
         # training parameters
         parser.add_argument('--n_epochs', type=int, default=200, help='number of epochs with the initial learning rate')
         parser.add_argument('--n_epochs_decay', type=int, default=200, help='number of epochs to linearly decay learning rate to zero')
