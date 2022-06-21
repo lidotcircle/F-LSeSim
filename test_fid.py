@@ -26,14 +26,15 @@ See options/base_options.py and options/test_options.py for more test options.
 See training and test tips at: https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/docs/tips.md
 See frequently asked questions at: https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/docs/qa.md
 """
+import io
 import os
+
+import torch
 from options.test_options import TestOptions
-from data import create_dataset
 from models import create_model
 from evaluations.fid_score import calculate_fid_given_paths
-from util.visualizer import save_images
-from util import html
-import util.util as util
+from util.translate_images import translate_images
+from util.visualizer import WDVisualizer
 import matplotlib.pyplot as plt
 
 
@@ -46,46 +47,50 @@ if __name__ == '__main__':
     opt.no_flip = True    # no flip; comment this line if results on flipped images are needed.
     opt.display_id = -1   # no visdom display; the test code saves the results to a HTML file.
     opt.num_test = opt.num_test if opt.num_test > 0 else float("inf")
-    dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
-    train_dataset = create_dataset(util.copyconf(opt, phase="train"))
+    visualizer = WDVisualizer(opt)
+    logger = visualizer.logger
+
     # traverse all epoch for the evaluation
     files_list = os.listdir(opt.checkpoints_dir + '/' + opt.name)
     epoches = []
-    fid_values = {}
     for file in files_list:
         if 'net_G' in file and 'latest' not in file:
             name = file.split('_')
             epoches.append(name[0])
+
+    # eval metrics
+    dataroot = opt.dataroot
+    fid_values = {}
     for epoch in epoches:
         opt.epoch = epoch
         model = create_model(opt)      # create a model given opt.model and other options
-        # create a website
-        web_dir = os.path.join(opt.results_dir, opt.name, '{}_{}'.format(opt.phase, opt.epoch))  # define the website directory
-        print('creating web directory', web_dir)
-        webpage = html.HTML(web_dir, 'Experiment = %s, Phase = %s, Epoch = %s' % (opt.name, opt.phase, opt.epoch))
-        # test with eval mode. This only affects layers like batchnorm and dropout.
-        # For [pix2pix]: we use batchnorm and dropout in the original pix2pix. You can experiment it with and without eval() mode.
-        # For [CycleGAN]: It should not affect CycleGAN as CycleGAN uses instancenorm without dropout.
-        for i, data in enumerate(dataset):
-            if i == 0:
-                model.data_dependent_initialize(data)
-                model.setup(opt)  # regular setup: load and print networks; create schedulers
-                model.parallelize()
-                if opt.eval:
-                    model.eval()
-            if i >= opt.num_test:  # only apply our model to opt.num_test images.
-                break
-            model.set_input(data)  # unpack data from data loader
-            model.test()           # run inference
-            visuals = model.get_current_visuals()  # get image results
-            img_path = model.get_image_paths()     # get image paths
-            if i % 5 == 0:  # save images to an HTML file
-                print('processing (%04d)-th image... %s' % (i, img_path))
-            save_images(webpage, visuals, img_path, aspect_ratio=opt.aspect_ratio, width=opt.display_winsize)
-        paths = [os.path.join(web_dir, 'images', 'fake_B'), os.path.join(web_dir, 'images', 'real_B')]
-        fid_value = calculate_fid_given_paths(paths, 50, True, 2048)
+        model.setup(opt)
+        generator: torch.nn.Module = None
+        for _, attr in enumerate(model.__dict__):
+            if attr.startswith("netG"):
+                if opt.direction == 'BtoA':
+                    if attr.endswith('B'):
+                        generator = getattr(model, attr)
+                else:
+                    generator = getattr(model, attr)
+        
+        if generator is None:
+            raise "generator is no found"
+        generator.eval()
+
+        def A2B(image):
+            ans = generator(image)
+            if isinstance(ans, tuple):
+                ans = ans[0]
+            return ans
+
+        src_img_dir = os.path.join(dataroot, "testA" if opt.direction == 'AtoB' else "testB")
+        dst_img_dir = "%s_eval_%s" % (src_img_dir, epoch)
+        real_img_dir = os.path.join(dataroot, "testB" if opt.direction == 'AtoB' else "testA")
+        translate_images(A2B, src_img_dir, dst_img_dir, model.device, 10)
+        fid_value = calculate_fid_given_paths([real_img_dir, dst_img_dir], 50, True, 2048)
         fid_values[int(epoch)] = fid_value
-        webpage.save()  # save the HTML
+
     print (fid_values)
     x = []
     y = []
@@ -99,6 +104,7 @@ if __name__ == '__main__':
     plt.xlabel('Epoch')
     plt.ylabel('FID on test set')
     plt.title(opt.name)
-    plt.savefig(os.path.join(opt.results_dir, opt.name, 'fid.jpg'))
+    img_buf = io.BytesIO()
+    plt.savefig(img_buf)
 
-
+    logger.sendBlobFile(img_buf, "%s_FID.jpg" % (opt.name), "/eval_metrics", "FID-%s" % (opt.name))

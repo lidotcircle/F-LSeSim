@@ -9,11 +9,6 @@ class TrainOptions(BaseOptions):
 
     def initialize(self, parser):
         parser = BaseOptions.initialize(self, parser)
-        # logger
-        parser.add_argument('--logger_endpoint', type=str , default="http://192.168.44.43:5445", help='logger endpoint')
-        parser.add_argument('--logger_prefix',   type=str,  default="", help='logger group prefix')
-        parser.add_argument('--disable_logger',  type=bool, default=False, help='logger endpoint')
-
         # metrics evaluation
         parser.add_argument('--metric_start_epoch', type=int, default=1, help='start epoch of evaluation metrics')
         parser.add_argument('--metric_eval_freq', type=int, default=10, help='metrics evaluation frequency')

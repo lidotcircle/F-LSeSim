@@ -1,3 +1,4 @@
+from typing import Callable
 import torch
 import torch.nn as nn
 import os
@@ -6,7 +7,7 @@ from data.image_folder import ImageFolder
 from torchvision.utils import save_image
 
 
-def translate_images(generator: nn.Module, src_images_dir: str, dst_images_dir: str, device = 'cpu', batch_size = 50):
+def translate_images(generator: Callable[[torch.Tensor], torch.Tensor], src_images_dir: str, dst_images_dir: str, device = 'cpu', batch_size = 50):
     images = ImageFolder(src_images_dir, return_paths=True, transform=transforms.Compose([transforms.ToTensor()]))
     num_images = len(images)
 

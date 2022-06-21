@@ -18,6 +18,11 @@ class BaseOptions():
         self.initialized = False
 
     def initialize(self, parser):
+        # logger
+        parser.add_argument('--logger_endpoint', type=str , default="http://192.168.44.43:5445", help='logger endpoint')
+        parser.add_argument('--logger_prefix',   type=str,  default="", help='logger group prefix')
+        parser.add_argument('--disable_logger',  type=bool, default=False, help='logger endpoint')
+
         """Define the common options that are used in both training and test."""
         # basic parameters
         parser.add_argument('--dataroot', required=True, help='path to images (should have subfolders trainA, trainB, valA, valB, etc)')
