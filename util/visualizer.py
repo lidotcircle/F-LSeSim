@@ -1,4 +1,5 @@
 import numpy as np
+import io
 import os
 import sys
 import ntpath
@@ -85,9 +86,9 @@ class WDVisualizer():
 
         image_tensor = torch.cat(image_list, dim=0)
         image = make_grid(image_tensor, nrow = batch_size, normalize = True)
-        image_path = "%s/%s.png" % ("helloimages", epoch)
-        save_image(image, image_path)
-        self.logger.sendBlobFile(image_path, "%s.png" % (epoch), "/validation_image/%s-%s/%s.png" % (self.logger.group_prefix, "hellodataset", epoch), "validation_image")
+        image_buf = io.BytesIO()
+        save_image(image, image_buf, format='png')
+        self.logger.sendBlobFile(image_buf, "%s.png" % (epoch), "/validation_image/%s-%s/%s.png" % (self.logger.group_prefix, "hellodataset", epoch), "validation_image")
 
 
 def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256):
