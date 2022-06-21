@@ -4,7 +4,6 @@ import torch
 import numpy as np
 from PIL import Image
 import os
-import cv2
 import importlib
 import argparse
 from argparse import Namespace
