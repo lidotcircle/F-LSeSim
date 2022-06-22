@@ -26,14 +26,13 @@ See options/base_options.py and options/test_options.py for more test options.
 See training and test tips at: https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/docs/tips.md
 See frequently asked questions at: https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/docs/qa.md
 """
+import datetime
 import io
 import os
 
-import torch
 from options.test_options import TestOptions
+from data import create_dataset
 from models import create_model
-from evaluations.fid_score import calculate_fid_given_paths
-from util.translate_images import translate_images
 from util.visualizer import WDVisualizer
 import matplotlib.pyplot as plt
 
@@ -47,8 +46,11 @@ if __name__ == '__main__':
     opt.no_flip = True    # no flip; comment this line if results on flipped images are needed.
     opt.display_id = -1   # no visdom display; the test code saves the results to a HTML file.
     opt.num_test = opt.num_test if opt.num_test > 0 else float("inf")
+
+    dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
     visualizer = WDVisualizer(opt)
     logger = visualizer.logger
+    now = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
 
     # traverse all epoch for the evaluation
     files_list = os.listdir(opt.checkpoints_dir + '/' + opt.name)
@@ -58,53 +60,34 @@ if __name__ == '__main__':
             name = file.split('_')
             epoches.append(name[0])
 
-    # eval metrics
-    dataroot = opt.dataroot
     fid_values = {}
+    kid_values = {}
     for epoch in epoches:
         opt.epoch = epoch
         model = create_model(opt)      # create a model given opt.model and other options
         model.setup(opt)
-        generator: torch.nn.Module = None
-        for _, attr in enumerate(model.__dict__):
-            if attr.startswith("netG"):
-                if opt.direction == 'BtoA':
-                    if attr.endswith('B'):
-                        generator = getattr(model, attr)
-                else:
-                    generator = getattr(model, attr)
-        
-        if generator is None:
-            raise "generator is no found"
-        generator.eval()
-
-        def A2B(image):
-            ans = generator(image)
-            if isinstance(ans, tuple):
-                ans = ans[0]
-            return ans
-
-        src_img_dir = os.path.join(dataroot, "testA" if opt.direction == 'AtoB' else "testB")
-        dst_img_dir = "%s_eval_%s" % (src_img_dir, epoch)
-        real_img_dir = os.path.join(dataroot, "testB" if opt.direction == 'AtoB' else "testA")
-        translate_images(A2B, src_img_dir, dst_img_dir, model.device, 10)
-        fid_value = calculate_fid_given_paths([real_img_dir, dst_img_dir], 50, True, 2048)
-        fid_values[int(epoch)] = fid_value
+        metrics = model.eval_metrics(epoch=epoch, num_test=opt.num_test) if opt.generate_image else model.eval_metrics_no(num_test=opt.num_test)
+        kid_values[int(epoch)] = metrics['KID']
+        fid_values[int(epoch)] = metrics['FID']
+        logger.send({'KID': metrics['KID'], 'FID': metrics['FID'], 'epoch': int(epoch)}, f"{now}_{opt.name}_metrics", True)
 
     print (fid_values)
-    x = []
-    y = []
-    for key in sorted(fid_values.keys()):
-        x.append(key)
-        y.append(fid_values[key])
-    plt.figure()
-    plt.plot(x, y)
-    for a, b in zip(x, y):
-        plt.text(a, b, str(round(b, 2)))
-    plt.xlabel('Epoch')
-    plt.ylabel('FID on test set')
-    plt.title(opt.name)
-    img_buf = io.BytesIO()
-    plt.savefig(img_buf)
+    print (kid_values)
+    for metric_name, values in zip(["FID", "KID"], [fid_values, kid_values]):
+        x = []
+        y = []
+        for key in sorted(values.keys()):
+            x.append(key)
+            y.append(values[key])
+        plt.figure()
+        plt.plot(x, y)
+        for a, b in zip(x, y):
+            plt.text(a, b, str(round(b, 2)))
+        plt.xlabel('Epoch')
+        plt.ylabel(f'{metric_name} on test set')
+        plt.title(opt.name)
+        img_buf = io.BytesIO()
+        plt.savefig(img_buf)
 
-    logger.sendBlobFile(img_buf, "%s_FID.jpg" % (opt.name), "/eval_metrics", "FID-%s" % (opt.name))
+        image_name = "%s_%s_%s.jpg" % (opt.name, metric_name, now)
+        logger.sendBlobFile(img_buf, image_name, f"/eval_metrics/{image_name}", opt.name)

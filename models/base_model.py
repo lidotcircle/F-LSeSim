@@ -1,10 +1,13 @@
 import os
+from typing import Any, Callable, List, Tuple
 import torch
 from collections import OrderedDict
 from abc import ABC, abstractmethod
+
+from data import CustomDatasetDataLoader, create_dataset
 from . import networks
-from metrics.all_score import calculate_scores_given_paths
-from util.translate_images import translate_images
+from metrics.all_score import calculate_scores_given_paths, calculate_scores_given_iter
+from util.util import copyconf, tensor2im, save_image
 
 
 class BaseModel(ABC):
@@ -257,23 +260,85 @@ class BaseModel(ABC):
                 if isinstance(ans, tuple):
                     ans = ans[0]
                 return ans
+    
+    def translate_images(
+        self,
+        dataset: CustomDatasetDataLoader,
+        action: Tuple[Callable[[torch.Tensor,torch.Tensor,List[str]],Any],str],
+        AtoB: bool = None, num_test: int = 50
+        ):
+        AtoB = AtoB if AtoB is not None else self.opt.direction == 'AtoB'
+        fake_image_path: str = None
+        real_image_path: str = None
+        if isinstance(action, str):
+            fake_image_path = os.path.join(action, f"fake_{'B' if AtoB else 'A'}")
+            real_image_path = os.path.join(action, f"real_{'B' if AtoB else 'A'}")
+            os.makedirs(fake_image_path, exist_ok=True)
+            os.makedirs(real_image_path, exist_ok=True)
+            def save_action(fake, real, name):
+                assert fake.size(0) == real.size(0) == len(name)
+                for i, img_path in enumerate(name):
+                    bname = os.path.basename(img_path)
+                    f, r = fake[i], real[i]
+                    fp, rp = os.path.join(fake_image_path, bname), os.path.join(real_image_path, bname)
+                    save_image(tensor2im(f.unsqueeze(0)), fp)
+                    save_image(tensor2im(r.unsqueeze(0)), rp)
 
-    def translate_test_images(self, epoch = 0):
-        real_imgs_dir = os.path.join(self.opt.dataroot, 'testB')
-        src_dir = os.path.join(self.opt.dataroot, "testA")
-        tgt_dir = "%s_eval_%s" % (src_dir, epoch)
-        translate_images(self.netG, src_dir, tgt_dir, self.device)
-        return real_imgs_dir, tgt_dir
+            action = save_action
 
-    def eval_metrics(self, epoch = 0) -> dict:
-        real_imgs_dir, generated_imgs_dir = self.translate_test_images(epoch)
+        for f, r, p in self.translate_images_iter(dataset, AtoB, num_test):
+            action(f, r, p)
+        
+        if fake_image_path is not None:
+            return real_image_path, fake_image_path
+
+    def translate_images_iter(
+        self,
+        dataset: CustomDatasetDataLoader,
+        AtoB: bool = None, num_test: int = 50
+    ):
+        AtoB = AtoB if AtoB is not None else self.opt.direction == 'AtoB'
+        for i, data in enumerate(dataset):
+            if i >= num_test:  # only apply our model to opt.num_test images.
+                break
+
+            self.set_input(data)  # unpack data from data loader
+            self.test()           # run inference
+            visuals = self.get_current_visuals()  # get image results
+            img_path: List[str] = self.get_image_paths()     # get image paths
+            result_images: torch.Tensor = visuals['fake_B' if AtoB else 'fake_A']
+            real_images: torch.Tensor = visuals['real_B' if AtoB else 'real_A']
+            yield result_images, real_images, img_path
+
+    def translate_test_images(self, epoch = 0, num_test=50):
+        result_dir = os.path.abspath(os.path.join(".", "results", self.opt.name, f"test_{epoch}"))
+        test_dataset = create_dataset(copyconf(self.opt, phase="test", batch_size=self.opt.val_batch_size))
+        return self.translate_images(test_dataset, result_dir, num_test=num_test)
+
+    def eval_metrics(self, epoch = 0, num_test=50) -> dict:
+        real_imgs_dir, generated_imgs_dir = self.translate_test_images(epoch, num_test=num_test)
         if generated_imgs_dir is None:
             return {}
 
-        result = calculate_scores_given_paths([generated_imgs_dir, real_imgs_dir], device=self.device, batch_size=50, dims=2048, use_fid_inception=True)
+        result = calculate_scores_given_paths(
+                                [generated_imgs_dir, real_imgs_dir], device=self.device, batch_size=50, dims=2048,
+                                use_fid_inception=True, torch_svd=self.opt.torch_svd)
         result = result[0]
         _, kid, fid = result
         kid_m, kid_std = kid
+        ans = {}
+        ans['FID'] = fid
+        ans['KID'] = kid_m
+        ans['KID_std'] = kid_std
+        return ans
+
+    def eval_metrics_no(self, num_test=50) -> dict:
+        test_dataset = create_dataset(copyconf(self.opt, phase="test", batch_size=self.opt.val_batch_size))
+        images = self.translate_images_iter(test_dataset, num_test=num_test)
+        fid, kid_m, kid_std = calculate_scores_given_iter(
+                                map(lambda b: (b[0], b[1]), images), self.device, dims=2048,
+                                use_fid_inception=True, torch_svd=self.opt.torch_svd)
+
         ans = {}
         ans['FID'] = fid
         ans['KID'] = kid_m

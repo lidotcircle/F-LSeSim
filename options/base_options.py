@@ -51,6 +51,7 @@ class BaseOptions():
         parser.add_argument('--serial_batches', action='store_true', help='if true, takes images in order to make batches, otherwise takes them randomly')
         parser.add_argument('--num_threads', default=4, type=int, help='# threads for loading data')
         parser.add_argument('--batch_size', type=int, default=1, help='input batch size')
+        parser.add_argument('--val_batch_size', type=int, default=5, help='validation/test batch size')
         parser.add_argument('--load_size', type=int, default=286, help='scale images to this size')
         parser.add_argument('--crop_size', type=int, default=256, help='then crop to this size')
         parser.add_argument('--max_dataset_size', type=int, default=float("inf"), help='Maximum number of samples allowed per dataset. If the dataset directory contains more than max_dataset_size, only a subset is loaded.')
@@ -67,6 +68,8 @@ class BaseOptions():
         parser.add_argument('--suffix', default='', type=str, help='customized suffix: opt.name = opt.name + suffix: e.g., {model}_{netG}_size{load_size}')
         # parameters related to StyleGAN2-based networks
         parser.add_argument('--stylegan2_G_num_downsampling', default=1, type=int, help='Number of downsampling layers used by StyleGAN2Generator')
+        parser.add_argument('--num_test', type=int, default=50, help='how many test images to run')
+        parser.add_argument('--torch_svd', action='store_true', help='SVD with torch in evaluating FID (different value with original scipy method)')
 
         self.initialized = True
         return parser

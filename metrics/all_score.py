@@ -1,10 +1,40 @@
-from .fid_score import _compute_activations, calculate_activation_statistics
+from typing import Iterable, Tuple
+
+import torch
+from tqdm import tqdm
+from .fid_score import ActivationConvertor, _compute_activations, calculate_activation_statistics, get_activations_from_tensor
 from .fid_score import calculate_frechet_distance, calculate_frechet_distance_torch
 from .kid_score import polynomial_mmd_averages
 from .models.inception import InceptionV3
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import numpy as np
 import os
+
+
+def calculate_scores_given_iter(
+    iter: Iterable[Tuple[torch.Tensor, torch.Tensor]],
+    device, dims, use_fid_inception=False, torch_svd=False
+    ):
+    convertor = ActivationConvertor(dims, device, use_fid_inception=use_fid_inception)
+    feat1 = None
+    feat2 = None
+    for b1, b2 in tqdm(iter):
+        t1 = convertor(b1)
+        t2 = convertor(b2)
+        feat1 = np.concatenate((feat1, t1)) if feat1 is not None else t1
+        feat2 = np.concatenate((feat2, t2)) if feat2 is not None else t2
+
+    # FID
+    m1, s1 = calculate_activation_statistics(feat1)
+    m2, s2 = calculate_activation_statistics(feat2)
+    if torch_svd:
+        fid_value = calculate_frechet_distance_torch(m1, s1, m2, s2, device=device)
+    else:
+        fid_value = calculate_frechet_distance(m1, s1, m2, s2)
+    
+    # KID
+    kid_values = polynomial_mmd_averages(feat1, feat2, n_subsets=100)
+    return fid_value, kid_values[0].mean(), kid_values[0].std()
 
 
 def calculate_scores_given_paths(paths, batch_size, device, dims, use_fid_inception=False, torch_svd=False):
