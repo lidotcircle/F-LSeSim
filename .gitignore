@@ -4,3 +4,4 @@ datasets
 helloimages
 *.log
 **__pycache__
+results

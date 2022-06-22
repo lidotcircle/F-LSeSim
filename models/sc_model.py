@@ -251,8 +251,9 @@ class SCModel(BaseModel):
     
     def compute_visuals(self):
         super().compute_visuals()
-        pred_fake_B = self.netD(self.fake_B)
-        pred_real_B = self.netD(self.real_B)
-        self.val_loss_G = self.criterionGAN(pred_fake_B, True)
-        self.val_loss_D_real = self.criterionGAN(pred_real_B, True)
-        self.val_loss_D_fake = self.criterionGAN(pred_fake_B, False)
+        if hasattr(self, 'netD'):
+            pred_fake_B = self.netD(self.fake_B)
+            pred_real_B = self.netD(self.real_B)
+            self.val_loss_G = self.criterionGAN(pred_fake_B, True)
+            self.val_loss_D_real = self.criterionGAN(pred_real_B, True)
+            self.val_loss_D_fake = self.criterionGAN(pred_fake_B, False)
