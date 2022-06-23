@@ -1,3 +1,4 @@
+from distutils.command.upload import upload
 import io
 import json
 from subprocess import Popen, PIPE
@@ -5,6 +6,8 @@ import sys
 import os
 import argparse
 import asyncio
+import regex
+from tqdm import tqdm
 from typing import Tuple, Union, List, Dict
 from aiohttp import ClientSession
 from base64 import decodebytes, encodebytes
@@ -209,7 +212,8 @@ class HttpLogger:
 
         fileid = await self.postBlob(session, blob, dst)
         fileurl = self.__API_blob + "/" + fileid
-        await self.postSData(session, json.dumps({ "url": fileurl, "name": blobname }), group)
+        if group is not None and group != "":
+            await self.postSData(session, json.dumps({ "url": fileurl, "name": blobname }), group)
 
     async def readline(self):
         return await asyncio.get_running_loop().run_in_executor(None, sys.stdin.readline)
@@ -270,6 +274,7 @@ parser.add_argument('-m', '--message', type=str, help='message, only for parent 
 parser.add_argument('-r', '--remote_dir', type=str, help='remote direcotry, only for parent mode', default=None)
 parser.add_argument('-f', '--file', type=str, help='file for uploading, only for parent mode', default=None)
 parser.add_argument('-d', '--dir',  type=str, help='directory for uploading, only for parent mode', default=None)
+parser.add_argument('-x', '--pattern', type=str, help='file pattern for directory uploading', default=None)
 
 def child_mode_action(args: argparse.Namespace):
     httplogger = HttpLogger(args.endpoint, args.timeout, 
@@ -305,14 +310,28 @@ def parent_mode_action(args: argparse.Namespace):
         dst = to_slash_path(dst)
         logger.sendBlobFile(args.file, basename, dst, group=logger.default_group)
     elif args.dir is not None:
+        matcher = None
+        if args.pattern is not None:
+            matcher = regex.compile(args.pattern)
+
+        uploading_list = []
         for dir, _, file_basenames in os.walk(args.dir):
             reldir = os.path.relpath(dir, args.dir)
             remote_dst = os.path.abspath(os.path.join(args.remote_dir, reldir))
             for basename in file_basenames:
                 file = os.path.join(dir, basename)
+                if matcher and not matcher.match(file):
+                    continue
                 dst =os.path.join(remote_dst, basename)
                 dst = to_slash_path(dst)
+                uploading_list.append((file, basename, dst))
+                print(f'[{file}] to [{dst}]')
+        
+        with tqdm(total=len(uploading_list)) as pbar:
+            for file, basename, dst in uploading_list:
+                pbar.set_postfix_str(f'sending [{file}] to [{dst}]')
                 logger.sendBlobFile(file, basename, dst, group=logger.default_group)
+                pbar.update(1)
     else:
         print("do nothing")
 

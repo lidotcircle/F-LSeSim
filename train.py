@@ -105,9 +105,14 @@ if __name__ == '__main__':
             iter_data_time = time.time()
 
         if epoch >= opt.metric_start_epoch and (epoch - opt.epoch_count) % opt.metric_eval_freq == 0:
-            metrics_stats = model.eval_metrics(epoch=epoch)
-            metrics_stats['epoch'] = epoch
-            visualizer.logger.send(metrics_stats, "Metrics", True)
+            metrics_stats_array = model.eval_metrics_no(epoch=epoch)
+            send_stats = {}
+            send_stats['epoch'] = epoch
+            for i in range(len(metrics_stats_array)):
+                metrics = metrics_stats_array[i]
+                for k in metrics:
+                    send_stats[f'{k}_{i}'] = metrics[k]
+            visualizer.logger.send(send_stats, "Metrics", True)
 
         if epoch % opt.save_epoch_freq == 0:              # cache our model every <save_epoch_freq> epochs
             info('saving the model at the end of epoch %d, iters %d' % (epoch, total_iters))

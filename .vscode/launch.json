@@ -121,6 +121,7 @@
                 "--name", "horse2zebra_sc",
                 "--val_batch_size", "1",
                 "--num_threads", "0",
+                "--generate_image",
                 "--num_test", "1000",
             ],
             "console": "integratedTerminal",
@@ -151,6 +152,7 @@
             "program": "test_metrics.py",
             "args": [
                 "--model", "cut_style",
+                "--netG", "transtyle",
                 "--dataroot", "datasets/horse2zebra",
                 "--name", "horse2zebra_cut_style",
                 "--val_batch_size", "1",
@@ -167,7 +169,7 @@
             "request": "launch",
             "program": "test_metrics.py",
             "args": [
-                "--model", "cyclegan",
+                "--model", "cycle_gan",
                 "--dataroot", "datasets/selfie2anime",
                 "--name", "selfie2anime_cycle_gan",
                 "--val_batch_size", "1",
@@ -185,6 +187,7 @@
             "program": "test_metrics.py",
             "args": [
                 "--model", "cycle_gan_style",
+                "--netG", "transtyle",
                 "--dataroot", "datasets/selfie2anime",
                 "--name", "selfie2anime_cycle_gan_style",
                 "--val_batch_size", "1",
@@ -239,7 +242,8 @@
                 "--password", "123456",
                 "--group", "hello",
                 "--dir", "util",
-                "--remote_dir", "/scripts"
+                "--pattern", ".*\\.py$",
+                "--remote_dir", "/scripts",
             ],
             "console": "integratedTerminal",
             "justMyCode": true,

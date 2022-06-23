@@ -58,7 +58,8 @@ if __name__ == '__main__':
     for file in files_list:
         if 'net_G' in file and 'latest' not in file:
             name = file.split('_')
-            epoches.append(name[0])
+            epoches.append(int(name[0]))
+    epoches = sorted(set(epoches))
 
     fid_values = {}
     kid_values = {}
@@ -66,23 +67,40 @@ if __name__ == '__main__':
         opt.epoch = epoch
         model = create_model(opt)      # create a model given opt.model and other options
         model.setup(opt)
-        metrics = model.eval_metrics(epoch=epoch, num_test=opt.num_test) if opt.generate_image else model.eval_metrics_no(num_test=opt.num_test)
-        kid_values[int(epoch)] = metrics['KID']
-        fid_values[int(epoch)] = metrics['FID']
-        logger.send({'KID': metrics['KID'], 'FID': metrics['FID'], 'epoch': int(epoch)}, f"{now}_{opt.name}_metrics", True)
+        metrics_array = model.eval_metrics(epoch=epoch, num_test=opt.num_test) if opt.generate_image else model.eval_metrics_no(num_test=opt.num_test)
+        send_stats = {}
+        send_stats['epoch'] = epoch 
+        for i in range(len(metrics_array)):
+            metrics = metrics_array[i]
+            kid_values[epoch] = kid_values[epoch] if epoch in kid_values else  []
+            fid_values[epoch] = fid_values[epoch] if epoch in fid_values else []
+            kid_values[epoch].append(metrics['KID'])
+            fid_values[epoch].append(metrics['FID'])
+            send_stats[f'KID_{i}'] = metrics['KID']
+            send_stats[f'FID_{i}'] = metrics['FID']
+        logger.send(send_stats, f"{now}_{opt.name}_metrics", True)
 
     print (fid_values)
     print (kid_values)
     for metric_name, values in zip(["FID", "KID"], [fid_values, kid_values]):
         x = []
-        y = []
+        ys = []
         for key in sorted(values.keys()):
             x.append(key)
-            y.append(values[key])
+            stats = values[key]
+            for i in range(len(stats)):
+                if len(ys) <= i:
+                    ys.append([])
+                ys[i].append(stats[i])
         plt.figure()
-        plt.plot(x, y)
-        for a, b in zip(x, y):
-            plt.text(a, b, str(round(b, 2)))
+        lines = []
+        for i in range(len(ys)):
+            y = ys[i]
+            line, = plt.plot(x, y, label = f'{metric_name}_{i}')
+            lines.append(line)
+            for a, b in zip(x, y):
+                plt.text(a, b, str(round(b, 3)))
+        plt.legend(handles=lines)
         plt.xlabel('Epoch')
         plt.ylabel(f'{metric_name} on test set')
         plt.title(opt.name)
