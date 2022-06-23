@@ -1,4 +1,3 @@
-from distutils.command.upload import upload
 import io
 import json
 from subprocess import Popen, PIPE
@@ -11,6 +10,9 @@ from tqdm import tqdm
 from typing import Tuple, Union, List, Dict
 from aiohttp import ClientSession
 from base64 import decodebytes, encodebytes
+
+
+queue_clear_message = "QUEUE_CLEAR"
 
 
 class TdLogger:
@@ -39,7 +41,7 @@ class TdLogger:
             args += ["--username", self.credential[0], "--password", self.credential[1]]
         else:
             args += ["--grouptoken", self.credential]
-        self._subpipe = Popen(args, stdin=PIPE, text=True)
+        self._subpipe = Popen(args, stdin=PIPE, stderr=PIPE, text=True)
     
     def wait(self):
         if self._subpipe is None:
@@ -47,6 +49,14 @@ class TdLogger:
         
         self.__send_eof()
         self._subpipe.wait()
+    
+    def wait_clear(self):
+        if self._subpipe is None:
+            return
+        while True:
+            msg = self._subpipe.stderr.readline()
+            if msg.strip() == queue_clear_message:
+                break
 
     def __gen(self, data: List[dict]):
         assert len(data) > 0
@@ -150,6 +160,7 @@ class HttpLogger:
         self.__end = False
         self.__API_sdata = "/apis/sdata"
         self.__API_blob =  "/apis/flink"
+        self.__total_msg_length = 0
 
     def getAPI(self, urlpath: str):
         if self.endpoint.endswith("/"):
@@ -221,16 +232,18 @@ class HttpLogger:
     async def __run_fetchmsg(self):
         while True:
             msg = await self.readline()
-            msg = msg.strip()
+            msg = msg and msg.strip()
+            self.__msg_event.set()
             if msg is None or len(msg) == 0:
                 self.__end = True
                 break
-            self.__msg_event.set()
-            msg = msg.strip()
             self.__msg_queue.append(msg)
+            self.__total_msg_length = self.__total_msg_length + 1
 
     async def __run_dispatchmsg(self):
         while True:
+            if len(self.__msg_queue) == 0 and self.__total_msg_length > 0:
+                print(f"\n{queue_clear_message}", file=sys.stderr)
             if (self.__end and len(self.__msg_queue) == 0):
                 break
             if len(self.__msg_queue) == 0:
@@ -331,6 +344,7 @@ def parent_mode_action(args: argparse.Namespace):
             for file, basename, dst in uploading_list:
                 pbar.set_postfix_str(f'sending [{file}] to [{dst}]')
                 logger.sendBlobFile(file, basename, dst, group=logger.default_group)
+                logger.wait_clear()
                 pbar.update(1)
     else:
         print("do nothing")
