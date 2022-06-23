@@ -51,12 +51,12 @@ class SCModel(BaseModel):
         # specify the models you want to save to the disk
         self.model_names = ['G', 'D'] if self.isTrain else ['G']
         # define the networks
-        self.netG = networks.define_G(opt.input_nc, opt.output_nc, opt.ngf, opt.netG, opt.norm, not opt.no_dropout,
+        self.netG = networks.define_G(opt.input_nc, opt.output_nc, opt.ngf, opt.netG, opt.normG, not opt.no_dropout,
                                 opt.init_type, opt.init_gain, opt.no_antialias, opt.no_antialias_up, self.gpu_ids, opt)
 
         # define the training process
         if self.isTrain:
-            self.netD = networks.define_D(opt.output_nc, opt.ndf, opt.netD, opt.n_layers_D, opt.norm,
+            self.netD = networks.define_D(opt.output_nc, opt.ndf, opt.netD, opt.n_layers_D, opt.normD,
                                           opt.init_type, opt.init_gain, opt.no_antialias, self.gpu_ids, opt)
             self.attn_layers = [int(i) for i in self.opt.attn_layers.split(',')]
             if opt.lambda_identity > 0.0 or opt.lambda_spatial_idt > 0.0:

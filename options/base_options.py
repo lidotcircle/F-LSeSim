@@ -21,7 +21,7 @@ class BaseOptions():
         # logger
         parser.add_argument('--logger_endpoint', type=str , default="http://192.168.44.43:5445", help='logger endpoint')
         parser.add_argument('--logger_prefix',   type=str,  default="", help='logger group prefix')
-        parser.add_argument('--disable_logger',  type=bool, default=False, help='logger endpoint')
+        parser.add_argument('--disable_logger',  action='store_true', help='logger endpoint')
 
         """Define the common options that are used in both training and test."""
         # basic parameters
@@ -38,7 +38,8 @@ class BaseOptions():
         parser.add_argument('--netD', type=str, default='basic', help='specify discriminator architecture [basic | n_layers | pixel]. The basic model is a 70x70 PatchGAN. n_layers allows you to specify the layers in the discriminator')
         parser.add_argument('--netG', type=str, default='resnet_9blocks', help='specify generator architecture [resnet_9blocks | resnet_6blocks | unet_256 | unet_128]')
         parser.add_argument('--n_layers_D', type=int, default=3, help='only used if netD==n_layers')
-        parser.add_argument('--norm', type=str, default='instance', help='instance normalization or batch normalization [instance | batch | none]')
+        parser.add_argument('--normG', type=str, default='instance', choices=['instance', 'batch', 'none'], help='instance normalization or batch normalization for G')
+        parser.add_argument('--normD', type=str, default='instance', choices=['instance', 'batch', 'none'], help='instance normalization or batch normalization for D')
         parser.add_argument('--init_type', type=str, default='xavier', help='network initialization [normal | xavier | kaiming | orthogonal]')
         parser.add_argument('--init_gain', type=float, default=0.02, help='scaling factor for normal, xavier and orthogonal.')
         parser.add_argument('--no_dropout', type=util.str2bool, nargs='?', const=True, default=True, help='no dropout for the generator')

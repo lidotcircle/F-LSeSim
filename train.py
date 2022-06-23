@@ -75,7 +75,11 @@ if __name__ == '__main__':
                 sample_image()
                 model.compute_visuals()
                 visualizer.display_current_results(model.get_current_visuals(), total_iters, save_result)
-                validity_stats_name = ["val_loss_G", "val_loss_D_real", "val_loss_D_fake"]
+                validity_stats_name = [
+                    "val_loss_G", "val_loss_D_real", "val_loss_D_fake",
+                    "val_loss_G_A", "val_loss_D_A_real", "val_loss_D_A_fake",
+                    "val_loss_G_B", "val_loss_D_B_real", "val_loss_D_B_fake"
+                ]
                 validity_stats = {}
                 for attr in validity_stats_name:
                     if hasattr(model, attr):

@@ -1,0 +1,249 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "CurrentFile",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}/src"
+        },
+        {
+            "name": "CycleGAN",
+            "type": "python",
+            "request": "launch",
+            "program": "train.py",
+            "args": [
+                "--model", "cycle_gan",
+                "--dataroot", "datasets/horse2zebra",
+                "--name", "horse2zebra_cyclegan",
+                "--batch_size", "1",
+                "--num_threads", "0",
+                "--display_freq", "20",
+                "--print_freq", "20",
+                "--disable_logger",
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "CUT",
+            "type": "python",
+            "request": "launch",
+            "program": "train.py",
+            "args": [
+                "--model", "cut",
+                "--dataroot", "datasets/horse2zebra",
+                "--name", "horse2zebra_cut",
+                "--batch_size", "1",
+                "--num_threads", "0",
+                "--display_freq", "20",
+                "--print_freq", "20",
+                "--disable_logger",
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "CUT_style",
+            "type": "python",
+            "request": "launch",
+            "program": "train.py",
+            "args": [
+                "--model", "cut_style",
+                "--netG", "transtyle",
+                "--dataroot", "datasets/horse2zebra",
+                "--name", "horse2zebra_cut_style",
+                "--batch_size", "1",
+                "--num_threads", "0",
+                "--display_freq", "20",
+                "--print_freq", "20",
+                "--disable_logger",
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "cyclegan_style",
+            "type": "python",
+            "request": "launch",
+            "program": "train.py",
+            "args": [
+                "--model", "cycle_gan_style",
+                "--netG", "transtyle",
+                "--dataroot", "datasets/horse2zebra",
+                "--name", "horse2zebra_cut_style",
+                "--batch_size", "1",
+                "--num_threads", "0",
+                "--display_freq", "20",
+                "--print_freq", "20",
+                "--disable_logger",
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "SC",
+            "type": "python",
+            "request": "launch",
+            "program": "train.py",
+            "args": [
+                "--model", "sc",
+                "--dataroot", "datasets/horse2zebra",
+                "--name", "horse2zebra_sc",
+                "--batch_size", "1",
+                "--num_threads", "0",
+                "--display_freq", "20",
+                "--print_freq", "20",
+                "--disable_logger",
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "SC_Metrics",
+            "type": "python",
+            "request": "launch",
+            "program": "test_metrics.py",
+            "args": [
+                "--model", "sc",
+                "--dataroot", "datasets/horse2zebra",
+                "--name", "horse2zebra_sc",
+                "--val_batch_size", "1",
+                "--num_threads", "0",
+                "--num_test", "1000",
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "CUT_Metrics",
+            "type": "python",
+            "request": "launch",
+            "program": "test_metrics.py",
+            "args": [
+                "--model", "cut",
+                "--dataroot", "datasets/horse2zebra",
+                "--name", "horse2zebra_cut",
+                "--val_batch_size", "1",
+                "--num_threads", "0",
+                "--num_test", "1000",
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "CUT_Style_Metrics",
+            "type": "python",
+            "request": "launch",
+            "program": "test_metrics.py",
+            "args": [
+                "--model", "cut_style",
+                "--dataroot", "datasets/horse2zebra",
+                "--name", "horse2zebra_cut_style",
+                "--val_batch_size", "1",
+                "--num_threads", "0",
+                "--num_test", "1000",
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "cyclegan_Metrics",
+            "type": "python",
+            "request": "launch",
+            "program": "test_metrics.py",
+            "args": [
+                "--model", "cyclegan",
+                "--dataroot", "datasets/selfie2anime",
+                "--name", "selfie2anime_cycle_gan",
+                "--val_batch_size", "1",
+                "--num_threads", "0",
+                "--num_test", "1000",
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "cyclegan_style_Metrics",
+            "type": "python",
+            "request": "launch",
+            "program": "test_metrics.py",
+            "args": [
+                "--model", "cycle_gan_style",
+                "--dataroot", "datasets/selfie2anime",
+                "--name", "selfie2anime_cycle_gan_style",
+                "--val_batch_size", "1",
+                "--num_threads", "0",
+                "--num_test", "1000",
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "tdlogger",
+            "type": "python",
+            "request": "launch",
+            "program": "util/tdlogger.py",
+            "args": [
+                "--endpoint", "http://192.168.44.43:5445",
+                "--username", "admin",
+                "--password", "123456",
+                "--group", "hello",
+                "--message", "hello world",
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "tdlogger-file",
+            "type": "python",
+            "request": "launch",
+            "program": "util/tdlogger.py",
+            "args": [
+                "--endpoint", "http://192.168.44.43:5445",
+                "--username", "admin",
+                "--password", "123456",
+                "--group", "hello",
+                "--file", "util/tdlogger.py",
+                "--remote_dir", "/scripts"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "tdlogger-dir",
+            "type": "python",
+            "request": "launch",
+            "program": "util/tdlogger.py",
+            "args": [
+                "--endpoint", "http://192.168.44.43:5445",
+                "--username", "admin",
+                "--password", "123456",
+                "--group", "hello",
+                "--dir", "util",
+                "--remote_dir", "/scripts"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
