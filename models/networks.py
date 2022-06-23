@@ -3,6 +3,7 @@ from torch.optim import lr_scheduler
 from . import cyclegan_networks, stylegan_networks, cut_networks
 from .spatchgan_discriminator_pytorch import SPatchDiscriminator
 from .transtyle import Transtyle, TransDiscriminator
+from .pregan_networks import ResnetGenerator as ResnetPre
 
 
 ##################################################################################
@@ -32,6 +33,8 @@ def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, in
         net = cyclegan_networks.ResnetGenerator(input_nc, output_nc, ngf, norm_value, use_dropout, n_blocks=9, no_antialias=no_antialias, no_antialias_up=no_antialias_up, opt=opt)
     elif netG == 'transtyle':
         net = Transtyle(input_nc, output_nc, ngf, use_dropout=use_dropout, no_antialias=no_antialias, no_antialias_up=no_antialias_up, n_blocks=6, opt=opt)
+    elif netG == 'resnet_pre':
+        net = ResnetPre(input_nc, output_nc, ngf, n_blocks=6)
     elif netG == 'stylegan2':
         net = stylegan_networks.StyleGAN2Generator(input_nc, output_nc, ngf, opt=opt)
     else:

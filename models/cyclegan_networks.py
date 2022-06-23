@@ -13,6 +13,8 @@ import functools
 import numpy as np
 from torch.nn import init
 
+from models.basic_networks import ILN
+
 
 ##################################################################################
 # Discriminator
@@ -443,6 +445,8 @@ def get_norm_layer(norm_type='instance'):
         norm_layer = functools.partial(nn.BatchNorm2d, affine=True, track_running_stats=True)
     elif norm_type == 'instance':
         norm_layer = functools.partial(nn.InstanceNorm2d, affine=False, track_running_stats=False)
+    elif norm_type == 'iln':
+        norm_layer = ILN
     elif norm_type == 'none':
         def norm_layer(x): return Identity()
     else:
