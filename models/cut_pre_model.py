@@ -9,6 +9,7 @@ from .patchnce import PatchNCELoss
 from .simple_resnet import ResNet18
 from .cut_model import DiscriminatorStats
 from util import computeModelGradientsNorm1, computeModelParametersNorm1
+from .utils import hw2heatmap
 import util.util as util
 import os
 
@@ -103,7 +104,7 @@ class CUTPreModel(BaseModel):
         # specify the training losses you want to print out.
         # The training/test scripts will call <BaseModel.get_current_losses>
         self.loss_names = ['G_GAN', 'D_real', 'D_fake', 'G', 'NCE']
-        self.visual_names = ['real_A', 'fake_B', 'real_B']
+        self.visual_names = ['real_A', 'fake_B', 'real_B', 'heatmap_A', 'heatmap_B']
         self.nce_layers = [int(i) for i in self.opt.nce_layers.split(',')]
         self.max_nce_layer = max(self.nce_layers)
 
@@ -244,19 +245,31 @@ class CUTPreModel(BaseModel):
             del self.idt_B
 
         self.feat_real = self.get_feature(self.real)
-        self.fake, _ = self.netG(self.real, self.feat_real)
+        self.fake, heatmaps = self.netG(self.real, self.feat_real)
         self.fake_B = self.fake[:self.real_A.size(0)]
+        self.heatmap_h_A: torch.Tensor = heatmaps[:self.real_A.size(0)]
         if self.real.size(0) > self.real_A.size(0):
             self.idt_B = self.fake[self.real_A.size(0):]
+            self.heatmap_h_B: torch.Tensor = heatmaps[self.real_A.size(0):]
 
     def compute_visuals(self):
         """Calculate additional output images for visdom and HTML visualization"""
-        pred_fake = self.netD(self.augment_pipe_dis(self.fake_B) if self.enable_ADA else self.fake_B)
-        pred_real = self.netD(self.augment_pipe_dis(self.real_B) if self.enable_ADA else self.real_B)
-        self.validation_loss_fake = self.criterionGAN(pred_fake, False).mean().item()
-        self.validation_loss_real = self.criterionGAN(pred_real, True).mean().item()
-        self.dis_stats.report_validation_loss(self.validation_loss_real)
+        super().compute_visuals()
+        if hasattr(self, 'netD'):
+            pred_fake_B = self.netD(self.fake_B)
+            pred_real_B = self.netD(self.real_B)
+            self.val_loss_G = self.criterionGAN(pred_fake_B, True).mean().item()
+            self.val_loss_D_real = self.criterionGAN(pred_real_B, True).mean().item()
+            self.val_loss_D_fake = self.criterionGAN(pred_fake_B, False).mean().item()
+        self.dis_stats.report_validation_loss(self.val_loss_D_real)
         self.adjust_augment_p()
+        store_A = []
+        store_B = []
+        for i in range(self.heatmap_h_A.size(0)):
+            store_A.append(hw2heatmap(self.heatmap_h_A[i]))
+            store_B.append(hw2heatmap(self.heatmap_h_B[i]))
+        self.heatmap_A = torch.stack(store_A)
+        self.heatmap_B = torch.stack(store_B)
 
     def adjust_augment_p(self):
         if not self.enable_ADA:
@@ -338,12 +351,3 @@ class CUTPreModel(BaseModel):
             total_nce_loss += loss.mean()
         
         return total_nce_loss / n_layers
-
-    def compute_visuals(self):
-        super().compute_visuals()
-        if hasattr(self, 'netD'):
-            pred_fake_B = self.netD(self.fake_B)
-            pred_real_B = self.netD(self.real_B)
-            self.val_loss_G = self.criterionGAN(pred_fake_B, True)
-            self.val_loss_D_real = self.criterionGAN(pred_real_B, True)
-            self.val_loss_D_fake = self.criterionGAN(pred_fake_B, False)

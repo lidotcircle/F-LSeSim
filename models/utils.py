@@ -1,7 +1,24 @@
 import torch
 import math
 import warnings
+import numpy as np
+import cv2
 
+
+def cam(x, size = 256):
+    x = x - np.min(x)
+    cam_img = x / np.max(x)
+    cam_img = np.uint8(255 * cam_img)
+    cam_img = cv2.resize(cam_img, (size, size))
+    cam_img = cv2.applyColorMap(cam_img, cv2.COLORMAP_JET)
+    return cam_img / 255.0
+
+def hw2heatmap(x: torch.Tensor, size = 256):
+    device = x.device
+    assert len(x.shape) == 2
+    map: np.ndarray = cam(x.detach().cpu().numpy(), size)
+    map = map[:,:,::-1].copy() * 2 - 1
+    return torch.from_numpy(map).permute(2, 0, 1).contiguous().to(device)
 
 ## taken from timm package, thanks
 def _no_grad_trunc_normal_(tensor, mean, std, a, b):

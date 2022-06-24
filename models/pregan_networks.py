@@ -49,13 +49,20 @@ class ResnetGenerator(nn.Module):
             nn.ReLU(True),
             ResnetBlock(ngf * mult, use_bias=False),
             nn.Conv2d(ngf * mult, ngf * mult, kernel_size=1, stride=1, bias=True),
+            nn.ReLU(True),
         ]
 
         # Up-Sampling
-        UpBlock = []
+        UpBlockResnet = []
         for i in range(n_blocks):
-            UpBlock += [ResnetBlock(ngf * mult, use_bias=False)]
+            UpBlockResnet += [ResnetBlock(ngf * mult, use_bias=False)]
 
+        UpBlock = [
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(2 * ngf * mult, ngf * mult, kernel_size=3, stride=1, padding=0, bias=False),
+            ILN(ngf * mult),
+            nn.ReLU(True)
+        ]
         for i in range(n_downsampling):
             mult = 2**(n_downsampling - i)
             UpBlock += [nn.Upsample(scale_factor=2, mode='nearest'),
@@ -70,18 +77,27 @@ class ResnetGenerator(nn.Module):
 
         self.DownBlock = nn.Sequential(*DownBlock)
         self.ActMap = nn.Sequential(*ActMap)
+        self.UpBlockResnet = nn.Sequential(*UpBlockResnet)
         self.UpBlock = nn.Sequential(*UpBlock)
 
     def forward(self, input: torch.Tensor, feature: torch.Tensor, features:List=None, max_layer: int=-1): 
         x: torch.Tensor = input
-        if features is None:
-            x = self.DownBlock(x)
-        else:
-            for _, layer in enumerate(self.DownBlock):
-                x = layer(x)
-                features.append(x)
-                if max_layer >= 0 and len(features) > max_layer:
-                    return
+        def forward_x(x, layers):
+            if features is None:
+                x = layers(x)
+                return x
+            else:
+                for _, layer in enumerate(layers):
+                    x = layer(x)
+                    features.append(x)
+                    if max_layer >= 0 and len(features) > max_layer:
+                        return None
+                return x
+        
+        x = forward_x(x, self.DownBlock)
+        if x is None:
+            return
+        pre_x = x
 
         actMap = self.ActMap(feature)
         x = x * actMap
@@ -91,14 +107,14 @@ class ResnetGenerator(nn.Module):
             if max_layer >= 0 and len(features) > max_layer:
                 return
 
-        if features is None:
-            x = self.UpBlock(x)
-        else:
-            for _, layer in enumerate(self.UpBlock):
-                x = layer(x)
-                features.append(x)
-                if max_layer >= 0 and len(features) > max_layer:
-                    return
+        x = forward_x(x, self.UpBlockResnet)
+        if x is None:
+            return
+
+        x = torch.cat((pre_x, x), dim=1)
+        x = forward_x(x, self.UpBlock)
+        if x is None:
+            return
 
         return x, heatmap
 
