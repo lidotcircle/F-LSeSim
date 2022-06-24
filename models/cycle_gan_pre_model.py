@@ -1,6 +1,6 @@
 import torch
 import itertools
-from models.utils import hw2heatmap
+from .utils import hw2heatmap, image_blend_normal
 from util.image_pool import ImagePool
 from .base_model import BaseModel
 from . import networks
@@ -131,10 +131,12 @@ class CycleGANPreModel(BaseModel):
         """Run forward pass; called by both functions <optimize_parameters> and <test>."""
         self.feat_real_A = self.get_feature(self.real_A)
         self.fake_B, self.heatmap_h_A = self.netG_A(self.real_A, self.feat_real_A)  # G_A(A)
+        self.heatmap_h_A = self.heatmap_h_A.detach()
         self.feat_fake_B = self.get_feature(self.fake_B)
         self.rec_A, _ = self.netG_B(self.fake_B, self.feat_fake_B)   # G_B(G_A(A))
         self.feat_real_B = self.get_feature(self.real_B)
         self.fake_A, self.heatmap_h_B = self.netG_B(self.real_B, self.feat_real_B)  # G_B(B)
+        self.heatmap_h_B = self.heatmap_h_B.detach()
         self.feat_fake_A = self.get_feature(self.fake_A)
         self.rec_B, _ = self.netG_A(self.fake_A, self.feat_fake_A)   # G_A(G_B(B))
 
@@ -238,5 +240,5 @@ class CycleGANPreModel(BaseModel):
         for i in range(self.heatmap_h_A.size(0)):
             store_A.append(hw2heatmap(self.heatmap_h_A[i]))
             store_B.append(hw2heatmap(self.heatmap_h_B[i]))
-        self.heatmap_A = torch.stack(store_A)
-        self.heatmap_B = torch.stack(store_B)
+        self.heatmap_A = image_blend_normal(torch.stack(store_A), self.real_A, 0.3)
+        self.heatmap_B = image_blend_normal(torch.stack(store_B), self.real_B, 0.3)

@@ -20,6 +20,9 @@ def hw2heatmap(x: torch.Tensor, size = 256):
     map = map[:,:,::-1].copy() * 2 - 1
     return torch.from_numpy(map).permute(2, 0, 1).contiguous().to(device)
 
+def image_blend_normal(img1: torch.Tensor, img2: torch.Tensor, alpha_a: float = 0.5):
+    return img1 * alpha_a + img2 * (1 - alpha_a)
+
 ## taken from timm package, thanks
 def _no_grad_trunc_normal_(tensor, mean, std, a, b):
     # Cut & paste from PyTorch official master until it's in a few official releases - RW

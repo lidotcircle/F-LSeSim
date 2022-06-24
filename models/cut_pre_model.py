@@ -9,7 +9,7 @@ from .patchnce import PatchNCELoss
 from .simple_resnet import ResNet18
 from .cut_model import DiscriminatorStats
 from util import computeModelGradientsNorm1, computeModelParametersNorm1
-from .utils import hw2heatmap
+from .utils import hw2heatmap, image_blend_normal
 import util.util as util
 import os
 
@@ -247,10 +247,10 @@ class CUTPreModel(BaseModel):
         self.feat_real = self.get_feature(self.real)
         self.fake, heatmaps = self.netG(self.real, self.feat_real)
         self.fake_B = self.fake[:self.real_A.size(0)]
-        self.heatmap_h_A: torch.Tensor = heatmaps[:self.real_A.size(0)]
+        self.heatmap_h_A: torch.Tensor = heatmaps[:self.real_A.size(0)].detach()
         if self.real.size(0) > self.real_A.size(0):
             self.idt_B = self.fake[self.real_A.size(0):]
-            self.heatmap_h_B: torch.Tensor = heatmaps[self.real_A.size(0):]
+            self.heatmap_h_B: torch.Tensor = heatmaps[self.real_A.size(0):].detach()
 
     def compute_visuals(self):
         """Calculate additional output images for visdom and HTML visualization"""
@@ -268,8 +268,8 @@ class CUTPreModel(BaseModel):
         for i in range(self.heatmap_h_A.size(0)):
             store_A.append(hw2heatmap(self.heatmap_h_A[i]))
             store_B.append(hw2heatmap(self.heatmap_h_B[i]))
-        self.heatmap_A = torch.stack(store_A)
-        self.heatmap_B = torch.stack(store_B)
+        self.heatmap_A = image_blend_normal(torch.stack(store_A), self.real_A, 0.3)
+        self.heatmap_B = image_blend_normal(torch.stack(store_B), self.real_B, 0.3)
 
     def adjust_augment_p(self):
         if not self.enable_ADA:
