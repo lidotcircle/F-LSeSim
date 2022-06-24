@@ -113,6 +113,28 @@
             "cwd": "${workspaceFolder}"
         },
         {
+            "name": "cut_pre",
+            "type": "python",
+            "request": "launch",
+            "program": "train.py",
+            "args": [
+                "--model", "cut_pre",
+                "--netG", "resnet_pre",
+                "--pretrained_model", " ",
+                "--dataroot", "datasets/horse2zebra",
+                "--name", "horse2zebra_cut_pre",
+                "--batch_size", "1",
+                "--num_threads", "0",
+                "--display_freq", "20",
+                "--print_freq", "20",
+                "--learned_feature",
+                "--disable_logger",
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}"
+        },
+        {
             "name": "SC",
             "type": "python",
             "request": "launch",

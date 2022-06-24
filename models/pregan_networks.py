@@ -1,3 +1,4 @@
+from typing import List
 import torch
 import torch.nn as nn
 from .basic_networks import ILN
@@ -71,15 +72,35 @@ class ResnetGenerator(nn.Module):
         self.ActMap = nn.Sequential(*ActMap)
         self.UpBlock = nn.Sequential(*UpBlock)
 
-    def forward(self, input: torch.Tensor, feature: torch.Tensor):
-        x = self.DownBlock(input)
+    def forward(self, input: torch.Tensor, feature: torch.Tensor, features:List=None, max_layer: int=-1): 
+        x: torch.Tensor = input
+        if features is None:
+            x = self.DownBlock(x)
+        else:
+            for _, layer in enumerate(self.DownBlock):
+                x = layer(x)
+                features.append(x)
+                if max_layer >= 0 and len(features) > max_layer:
+                    return
 
         actMap = self.ActMap(feature)
         x = x * actMap
         heatmap = torch.mean(actMap, dim = 1)
+        if features is not None:
+            features.append(x)
+            if max_layer >= 0 and len(features) > max_layer:
+                return
 
-        out = self.UpBlock(x)
-        return out, heatmap
+        if features is None:
+            x = self.UpBlock(x)
+        else:
+            for _, layer in enumerate(self.UpBlock):
+                x = layer(x)
+                features.append(x)
+                if max_layer >= 0 and len(features) > max_layer:
+                    return
+
+        return x, heatmap
 
 
 class ResnetBlock(nn.Module):
