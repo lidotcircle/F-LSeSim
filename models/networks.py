@@ -4,6 +4,7 @@ from . import cyclegan_networks, stylegan_networks, cut_networks
 from .spatchgan_discriminator_pytorch import SPatchDiscriminator
 from .transtyle import Transtyle, TransDiscriminator
 from .pregan_networks import ResnetGenerator as ResnetPre
+from .nlayer_prefocus_discriminator import NLayerPreFocusDiscriminator
 
 
 ##################################################################################
@@ -60,6 +61,9 @@ def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal'
     norm_value = cyclegan_networks.get_norm_layer(norm)
     if netD == 'basic':
         net = cyclegan_networks.NLayerDiscriminator(input_nc, ndf, n_layers_D, norm_value, no_antialias)
+    elif netD == 'prefocus':
+        premodel: str = opt.DFocus_pretrained_model
+        net = NLayerPreFocusDiscriminator(input_nc, premodel, ndf, n_layers_D, norm_value)
     elif netD == 'bimulti':
         net = cyclegan_networks.D_NLayersMulti(input_nc, ndf, n_layers=n_layers_D, norm_layer=norm_value, num_D=2)
     elif netD == 'spatch':
