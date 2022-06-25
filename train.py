@@ -47,7 +47,7 @@ if __name__ == '__main__':
     def info(msg: str):
         logger.info(msg)
         print(msg)
-    total_iters = 0                # the total number of training iterations
+    total_iters = len(dataset) * opt.epoch_count    # the total number of training iterations
 
     for epoch in range(opt.epoch_count, opt.n_epochs + opt.n_epochs_decay + 1):    # outer loop for different epochs; we save the model by <epoch_count>, <epoch_count>+<save_latest_freq>
         epoch_start_time = time.time()  # timer for entire epoch
@@ -57,7 +57,7 @@ if __name__ == '__main__':
 
         for i, data in enumerate(dataset):  # inner loop within one epoch
             iter_start_time = time.time()  # timer for computation per iteration
-            if total_iters % opt.print_freq == 0:
+            if epoch_iter % opt.print_freq == 0:
                 t_data = iter_start_time - iter_data_time
 
             total_iters += opt.batch_size
@@ -104,7 +104,7 @@ if __name__ == '__main__':
 
             iter_data_time = time.time()
 
-        if epoch >= opt.metric_start_epoch and (epoch - opt.epoch_count) % opt.metric_eval_freq == 0:
+        if epoch >= opt.metric_start_epoch and epoch % opt.metric_eval_freq == 0:
             metrics_stats_array = model.eval_metrics_no()
             send_stats = {}
             send_stats['epoch'] = epoch
