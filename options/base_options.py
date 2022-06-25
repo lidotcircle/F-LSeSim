@@ -38,6 +38,8 @@ class BaseOptions():
         parser.add_argument('--netD', type=str, default='basic', help='specify discriminator architecture [basic | n_layers | pixel]. The basic model is a 70x70 PatchGAN. n_layers allows you to specify the layers in the discriminator')
         parser.add_argument('--netG', type=str, default='resnet_9blocks', help='specify generator architecture [resnet_9blocks | resnet_6blocks | unet_256 | unet_128]')
         parser.add_argument('--DFocus_pretrained_model', type=str, default='', help='pretrained resnet18 model for helping discriminator focus on critical area')
+        parser.add_argument('--style_extractor', type=str, default='cvt', help='style extrator [cvt | vit | simclr]')
+        parser.add_argument('--resnet18_style_model', type=str, default='', help='pretrained resnet18 model for extracting style')
         parser.add_argument('--n_layers_D', type=int, default=3, help='only used if netD==n_layers')
         parser.add_argument('--normG', type=str, default='instance', choices=['instance', 'batch', 'none'], help='instance normalization or batch normalization for G')
         parser.add_argument('--normD', type=str, default='instance', choices=['instance', 'batch', 'none'], help='instance normalization or batch normalization for D')

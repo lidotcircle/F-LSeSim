@@ -4,6 +4,32 @@ import torch.nn.functional as F
 import numpy as np
 from .styleformer import StyleFormer
 from .cvt import CvT
+from .simple_resnet import ResNet18
+
+
+class ResNet18Feature(nn.Module):
+    def __init__(self, pretrained_model:str, num_out: int, learned_feature:bool=False):
+        super(ResNet18Feature, self).__init__()
+        self.resnet = ResNet18()
+        if pretrained_model != '':
+            self.resnet.load_state_dict(torch.load(pretrained_model))
+        if not learned_feature:
+            for params in self.resnet.parameters():
+                params.requires_grad = False
+        
+        self.styleff = nn.Sequential(
+            nn.Linear(512, 512),
+            nn.LeakyReLU(negative_slope=0.1),
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512, num_out)
+        )
+
+    def forward(self, input):
+        features = []
+        self.resnet(input, features=features)
+        feature = features[-1]
+        return self.styleff(feature)
 
 
 class AdaIN(nn.Module):
@@ -263,6 +289,9 @@ class Transtyle(torch.nn.Module):
             self.styleformer = CvT(num_classes=self.num_style_outputs)
         elif style_extractor == 'vit':
             self.styleformer = StyleFormer(num_outputs=self.num_style_outputs)
+        elif style_extractor == 'simclr':
+            pretrained_model = opt.resnet18_style_model
+            self.styleformer = ResNet18Feature(pretrained_model=pretrained_model, num_out=self.num_style_outputs)
         else:
             raise NotImplementedError()
         

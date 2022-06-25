@@ -33,7 +33,8 @@ def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, in
     if netG == 'resnet_9blocks':
         net = cyclegan_networks.ResnetGenerator(input_nc, output_nc, ngf, norm_value, use_dropout, n_blocks=9, no_antialias=no_antialias, no_antialias_up=no_antialias_up, opt=opt)
     elif netG == 'transtyle':
-        net = Transtyle(input_nc, output_nc, ngf, use_dropout=use_dropout, no_antialias=no_antialias, no_antialias_up=no_antialias_up, n_blocks=6, opt=opt)
+        extrator = opt.style_extractor
+        net = Transtyle(input_nc, output_nc, ngf, style_extractor=extrator, use_dropout=use_dropout, no_antialias=no_antialias, no_antialias_up=no_antialias_up, n_blocks=6, opt=opt)
     elif netG == 'resnet_pre':
         net = ResnetPre(input_nc, output_nc, ngf, n_blocks=6)
     elif netG == 'stylegan2':
