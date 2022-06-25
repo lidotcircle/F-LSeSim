@@ -120,7 +120,7 @@
             "args": [
                 "--model", "cut_pre",
                 "--netG", "resnet_pre",
-                "--pretrained_model", " ",
+                "--pretrained_model", "checkpoints\\pretrained\\horsezebra.pth",
                 "--dataroot", "datasets/horse2zebra",
                 "--name", "horse2zebra_cut_pre",
                 "--batch_size", "1",

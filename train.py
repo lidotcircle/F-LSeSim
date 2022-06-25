@@ -105,7 +105,7 @@ if __name__ == '__main__':
             iter_data_time = time.time()
 
         if epoch >= opt.metric_start_epoch and (epoch - opt.epoch_count) % opt.metric_eval_freq == 0:
-            metrics_stats_array = model.eval_metrics_no(epoch=epoch)
+            metrics_stats_array = model.eval_metrics_no()
             send_stats = {}
             send_stats['epoch'] = epoch
             for i in range(len(metrics_stats_array)):

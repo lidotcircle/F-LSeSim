@@ -121,6 +121,8 @@ class CUTPreModel(BaseModel):
 
         if self.isTrain:
             self.model_names = ['G', 'F', 'D']
+            if self.learned_feature:
+                self.model_names.append('Pre')
         else:  # during test time, only load G
             self.model_names = ['G']
 
