@@ -3,7 +3,7 @@ from torch.optim import lr_scheduler
 from . import cyclegan_networks, stylegan_networks, cut_networks
 from .spatchgan_discriminator_pytorch import SPatchDiscriminator
 from .transtyle import Transtyle, TransDiscriminator
-from .pregan_networks import ResnetGenerator as ResnetPre
+from .pregan_networks import MultiYAPatch, ResnetGenerator as ResnetPre
 from .nlayer_prefocus_discriminator import NLayerPreFocusDiscriminator
 
 
@@ -65,6 +65,12 @@ def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal'
     elif netD == 'prefocus':
         premodel: str = opt.DFocus_pretrained_model
         net = NLayerPreFocusDiscriminator(input_nc, premodel, ndf, n_layers_D, norm_value)
+    elif netD == 'multipatch':
+        layers = []
+        str_layers: str = opt.multipatch_layers
+        for num in str_layers.split(','):
+            layers.append(int(num))
+        net = MultiYAPatch(input_nc, ndf, layers)
     elif netD == 'bimulti':
         net = cyclegan_networks.D_NLayersMulti(input_nc, ndf, n_layers=n_layers_D, norm_layer=norm_value, num_D=2)
     elif netD == 'spatch':

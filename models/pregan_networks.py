@@ -137,3 +137,53 @@ class ResnetBlock(nn.Module):
     def forward(self, x):
         out = x + self.conv_block(x)
         return out
+
+
+class YAPatch(nn.Module):
+    def __init__(self, input_nc, ndf=64, n_layers=5):
+        super(YAPatch, self).__init__()
+        model = [nn.ReflectionPad2d(1),
+                 nn.utils.spectral_norm(
+                 nn.Conv2d(input_nc, ndf, kernel_size=4, stride=2, padding=0, bias=True)),
+                 nn.LeakyReLU(0.2, True)]
+
+        for i in range(1, n_layers - 2):
+            mult = 2 ** (i - 1)
+            model += [nn.ReflectionPad2d(1),
+                      nn.utils.spectral_norm(
+                      nn.Conv2d(ndf * mult, ndf * mult * 2, kernel_size=4, stride=2, padding=0, bias=True)),
+                      nn.LeakyReLU(0.2, True)]
+
+        mult = 2 ** (n_layers - 2 - 1)
+        model += [nn.ReflectionPad2d(1),
+                  nn.utils.spectral_norm(
+                  nn.Conv2d(ndf * mult, ndf * mult, kernel_size=4, stride=1, padding=0, bias=True)),
+                  nn.LeakyReLU(0.2, True)]
+
+        model += [nn.utils.spectral_norm(
+                  nn.Conv2d(ndf * mult, 1, kernel_size=4, stride=1, padding=0, bias=False))]
+
+        self.model = nn.Sequential(*model)
+
+    def forward(self, input):
+        return self.model(input)
+
+
+class MultiYAPatch(nn.Module):
+    def __init__(self, input_nc, ndf=64, n_layers: List[int]=[5]):
+        super(YAPatch, self).__init__()
+        self.n_nets = len(n_layers)
+        for i in range(self.n_nets):
+            net = YAPatch(input_nc, ndf, n_layers[i])
+            setattr(self, f"net_{i}", net)
+
+    def forward(self, input):
+        outputs = []
+
+        for i in range(self.n_nets):
+            net = getattr(self, f"net_{i}")
+            out = net(input)
+            out = out.view(out.size(0), -1)
+            outputs.append(out)
+
+        return torch.cat(outputs, dim=1)

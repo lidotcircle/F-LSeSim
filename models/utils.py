@@ -20,6 +20,12 @@ def hw2heatmap(x: torch.Tensor, size = 256):
     map = map[:,:,::-1].copy() * 2 - 1
     return torch.from_numpy(map).permute(2, 0, 1).contiguous().to(device)
 
+def bhw2heatmap(bx: torch.Tensor, size = 256):
+    ans = []
+    for i in range(bx.size(0)):
+        ans.append(hw2heatmap(bx[i]))
+    return torch.stack(ans, dim=0)
+
 def image_blend_normal(img1: torch.Tensor, img2: torch.Tensor, alpha_a: float = 0.5):
     return img1 * alpha_a + img2 * (1 - alpha_a)
 
