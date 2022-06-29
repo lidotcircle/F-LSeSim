@@ -171,7 +171,7 @@ class YAPatch(nn.Module):
 
 class MultiYAPatch(nn.Module):
     def __init__(self, input_nc, ndf=64, n_layers: List[int]=[5]):
-        super(YAPatch, self).__init__()
+        super(MultiYAPatch, self).__init__()
         self.n_nets = len(n_layers)
         for i in range(self.n_nets):
             net = YAPatch(input_nc, ndf, n_layers[i])

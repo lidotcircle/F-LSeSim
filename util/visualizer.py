@@ -71,7 +71,10 @@ class WDVisualizer():
                     visuals[k] = v[:5]
             batch_size = 5
         
-        image_name_list = [ 'real_A', 'heatmap_A', 'fake_B', 'rec_A', 'idt_B', 'real_B', 'heatmap_B', 'fake_A', 'rec_B', 'idt_A']
+        image_name_list = [
+            'real_A', 'heatmap_A', 'heatmap_DL_A', 'heatmap_DG_A', 'fake_B', 'rec_A', 'idt_B',
+            'real_B', 'heatmap_B', 'heatmap_DL_B', 'heatmap_DG_B', 'fake_A', 'rec_B', 'idt_A'
+        ]
         image_list = []
         for name in image_name_list:
             if name in visuals:

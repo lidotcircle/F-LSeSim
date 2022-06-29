@@ -29,7 +29,10 @@ class UGATITModel(BaseModel) :
     def __init__(self, opt):
         BaseModel.__init__(self, opt)
         # specify the training losses you want to print out. The training/test scripts will call <BaseModel.get_current_losses>
-        self.loss_names = ['DG_A', 'DL_A', 'G_A', 'cycle_A', 'idt_A', 'DG_B', 'DL_B', 'G_B', 'cycle_B', 'idt_B']
+        self.loss_names = [
+            'DG_A', 'DL_A', 'DG_cam_A', 'DL_cam_A', 'G_A', 'cycle_A', 'idt_A', 
+            'DG_B', 'DL_B', 'DG_cam_B', 'DL_cam_B', 'G_B', 'cycle_B', 'idt_B'
+        ]
         # specify the images you want to save/display. The training/test scripts will call <BaseModel.get_current_visuals>
         visual_names_A = ['real_A', 'fake_B', 'rec_A', 'heatmap_A', 'heatmap_DL_A', 'heatmap_DG_A']
         visual_names_B = ['real_B', 'fake_A', 'rec_B', 'heatmap_B', 'heatmap_DL_B', 'heatmap_DG_B']
@@ -177,17 +180,19 @@ class UGATITModel(BaseModel) :
         loss_D_fake = self.criterionGAN(pred_fake, False)
         loss_D_fake_cam = self.criterionGAN(fake_cam_logit, True)
         # Combined loss and calculate gradients
-        loss_D = (loss_D_real + loss_D_fake) * 0.5 + (loss_D_real_cam + loss_D_fake_cam) * self.lambda_cam
-        loss_D.backward()
-        return loss_D
+        loss_D = (loss_D_real + loss_D_fake) * 0.5
+        loss_D_cam = (loss_D_real_cam + loss_D_fake_cam) * self.lambda_cam
+        loss_total = loss_D + loss_D_cam
+        loss_total.backward()
+        return loss_D, loss_D_cam
 
     def backward_D(self):
         fake_B = self.fake_B_pool.query(self.fake_B.detach())
         fake_A = self.fake_A_pool.query(self.fake_A.detach())
-        self.loss_DG_A = self.backward_D_basic(self.netDG_A, self.real_A, fake_A)
-        self.loss_DL_A = self.backward_D_basic(self.netDL_A, self.real_A, fake_A)
-        self.loss_DG_B = self.backward_D_basic(self.netDG_B, self.real_B, fake_B)
-        self.loss_DL_B = self.backward_D_basic(self.netDL_B, self.real_B, fake_B)
+        self.loss_DG_A, self.loss_DG_cam_A = self.backward_D_basic(self.netDG_A, self.real_A, fake_A)
+        self.loss_DL_A, self.loss_DL_cam_A = self.backward_D_basic(self.netDL_A, self.real_A, fake_A)
+        self.loss_DG_B, self.loss_DG_cam_B = self.backward_D_basic(self.netDG_B, self.real_B, fake_B)
+        self.loss_DL_B, self.loss_DL_cam_B = self.backward_D_basic(self.netDL_B, self.real_B, fake_B)
 
     def compute_visuals(self):
         super().compute_visuals()

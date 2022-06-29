@@ -47,7 +47,7 @@ if __name__ == '__main__':
     def info(msg: str):
         logger.info(msg)
         print(msg)
-    total_iters = len(dataset) * opt.epoch_count    # the total number of training iterations
+    total_iters = len(dataset) * (opt.epoch_count - 1)    # the total number of training iterations
 
     for epoch in range(opt.epoch_count, opt.n_epochs + opt.n_epochs_decay + 1):    # outer loop for different epochs; we save the model by <epoch_count>, <epoch_count>+<save_latest_freq>
         epoch_start_time = time.time()  # timer for entire epoch

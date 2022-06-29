@@ -23,7 +23,7 @@ def hw2heatmap(x: torch.Tensor, size = 256):
 def bhw2heatmap(bx: torch.Tensor, size = 256):
     ans = []
     for i in range(bx.size(0)):
-        ans.append(hw2heatmap(bx[i]))
+        ans.append(hw2heatmap(bx[i][0]))
     return torch.stack(ans, dim=0)
 
 def image_blend_normal(img1: torch.Tensor, img2: torch.Tensor, alpha_a: float = 0.5):
