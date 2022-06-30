@@ -17,12 +17,13 @@ queue_clear_message = "QUEUE_CLEAR"
 
 class TdLogger:
     def __init__(self, endpoint: str, default_group: str, sdata_naverage: int, credential: Union[str, Tuple[str,str]], 
-                 timeout: int = 5, group_prefix: str = "", disabled: bool = False):
+                 timeout: int = 5, hint_done: bool = False, group_prefix: str = "", disabled: bool = False):
         self.endpoint = endpoint
         self.default_group = default_group
         self.sdataNaverage = sdata_naverage
         self.timeout = timeout
         self.credential = credential
+        self.hint_done = hint_done
         self.group_prefix = group_prefix
         self.disabled = disabled
         assert(self.credential != "")
@@ -37,11 +38,16 @@ class TdLogger:
                     "--endpoint", self.endpoint, 
                     "--timeout", str(self.timeout)
                 ]
+
         if (type(self.credential) == tuple):
             args += ["--username", self.credential[0], "--password", self.credential[1]]
         else:
             args += ["--grouptoken", self.credential]
-        self._subpipe = Popen(args, stdin=PIPE, stderr=PIPE, text=True)
+        
+        if not self.hint_done:
+            args += ["--disable_hint_done"]
+
+        self._subpipe = Popen(args, stdin=PIPE, stderr=PIPE, text=True) if self.hint_done else Popen(args, stdin=PIPE, text=True)
     
     def wait(self):
         if self._subpipe is None:
@@ -51,7 +57,7 @@ class TdLogger:
         self._subpipe.wait()
     
     def wait_clear(self):
-        if self._subpipe is None:
+        if self._subpipe is None or not self.hint_done:
             return
         while True:
             msg = self._subpipe.stderr.readline()
@@ -150,10 +156,12 @@ class TdLogger:
 class HttpLogger:
     def __init__(self, endpoint: str, timeout: float,
                  grouptoken: str = "",
+                 hint_done: bool = False,
                  username: str = "", password: str = ""):
         self.endpoint = endpoint
         self.timeout = timeout
         self.grouptoken = grouptoken
+        self.hint_done = hint_done
         self.username = username
         self.password = password
         self.__msg_queue = []
@@ -242,7 +250,7 @@ class HttpLogger:
 
     async def __run_dispatchmsg(self):
         while True:
-            if len(self.__msg_queue) == 0 and self.__total_msg_length > 0:
+            if len(self.__msg_queue) == 0 and self.__total_msg_length > 0 and self.hint_done:
                 print(f"\n{queue_clear_message}", file=sys.stderr)
             if (self.__end and len(self.__msg_queue) == 0):
                 break
@@ -280,6 +288,7 @@ parser.add_argument('-t', '--timeout',    type=float, help='http request timeout
 parser.add_argument('-u', '--username',   type=str,   help='service username', default=None)
 parser.add_argument('-p', '--password',   type=str,   help='service password', default=None)
 parser.add_argument('-c', '--grouptoken', type=str,   help='service grouptoken', default=None)
+parser.add_argument('--disable_hint_done', action='store_true', help='hint_done: when message be consumed, child process send a message to stderr')
 
 parser.add_argument('-g', '--group', type=str, help='group, only for parent mode', default="")
 parser.add_argument('-l', '--level', type=str, choices=['info', 'debug', 'warn', 'error'], help='message level, only for parent mode', default='info')
@@ -292,6 +301,7 @@ parser.add_argument('-x', '--pattern', type=str, help='file pattern for director
 
 def child_mode_action(args: argparse.Namespace):
     httplogger = HttpLogger(args.endpoint, args.timeout, 
+                            hint_done=not args.disable_hint_done,
                             username=args.username, password=args.password, 
                             grouptoken=args.grouptoken)
     asyncio.run(httplogger.run())
@@ -310,7 +320,7 @@ def parent_mode_action(args: argparse.Namespace):
             fp = fp[2:]
         return fp
 
-    logger = TdLogger(args.endpoint, args.group, 1, credential)
+    logger = TdLogger(args.endpoint, args.group, 1, credential, hint_done=not args.disable_hint_done)
     if args.message is not None:
         data = {}
         data['level'] = args.level
