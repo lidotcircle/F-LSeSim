@@ -121,10 +121,11 @@ class CUTPreModel(BaseModel):
 
         if self.isTrain:
             self.model_names = ['G', 'F', 'D']
-            if self.learned_feature:
-                self.model_names.append('Pre')
         else:  # during test time, only load G
             self.model_names = ['G']
+
+        if self.learned_feature:
+            self.model_names.append('Pre')
 
         # define networks (both generator and discriminator)
         if opt.netG != 'resnet_pre':
@@ -263,15 +264,19 @@ class CUTPreModel(BaseModel):
             self.val_loss_G = self.criterionGAN(pred_fake_B, True).mean().item()
             self.val_loss_D_real = self.criterionGAN(pred_real_B, True).mean().item()
             self.val_loss_D_fake = self.criterionGAN(pred_fake_B, False).mean().item()
-        self.dis_stats.report_validation_loss(self.val_loss_D_real)
-        self.adjust_augment_p()
+            self.dis_stats.report_validation_loss(self.val_loss_D_real)
+            self.adjust_augment_p()
+
         store_A = []
-        store_B = []
         for i in range(self.heatmap_h_A.size(0)):
             store_A.append(hw2heatmap(self.heatmap_h_A[i]))
-            store_B.append(hw2heatmap(self.heatmap_h_B[i]))
         self.heatmap_A = image_blend_normal(torch.stack(store_A), self.real_A, 0.3)
-        self.heatmap_B = image_blend_normal(torch.stack(store_B), self.real_B, 0.3)
+
+        if hasattr(self, 'heatmap_h_B'):
+            store_B = []
+            for i in range(self.heatmap_h_B.size(0)):
+                store_B.append(hw2heatmap(self.heatmap_h_B[i]))
+            self.heatmap_B = image_blend_normal(torch.stack(store_B), self.real_B, 0.3)
 
     def adjust_augment_p(self):
         if not self.enable_ADA:

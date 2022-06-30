@@ -218,6 +218,27 @@
             "cwd": "${workspaceFolder}"
         },
         {
+            "name": "CUT_pre_Metrics",
+            "type": "python",
+            "request": "launch",
+            "program": "test_metrics.py",
+            "args": [
+                "--model", "cut_pre",
+                "--netG", "resnet_pre",
+                "--dataroot", "datasets/horse2zebra",
+                "--pretrained_model", "checkpoints\\pretrained\\horsezebra.pth",
+                "--name", "horse2zebra_cut_pre",
+                "--val_batch_size", "1",
+                "--num_threads", "0",
+                "--num_test", "1000",
+                "--learned_feature",
+                "--generate_image",
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}"
+        },
+        {
             "name": "CUT_Style_Metrics",
             "type": "python",
             "request": "launch",
