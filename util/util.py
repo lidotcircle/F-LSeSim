@@ -20,6 +20,15 @@ def str2bool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
+def flatten_list(los: list):
+    ans = []
+    for val in los:
+        if isinstance(val, list):
+            ans += flatten_list(val)
+        else:
+            ans.append(val)
+
+    return ans
 
 def copyconf(default_opt, **kwargs):
     conf = Namespace(**vars(default_opt))
