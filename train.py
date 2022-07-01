@@ -78,7 +78,7 @@ if __name__ == '__main__':
                 validity_stats_name = [
                     "val_loss_G", "val_loss_D_real", "val_loss_D_fake",
                     "val_loss_G_A", "val_loss_D_A_real", "val_loss_D_A_fake",
-                    "val_loss_G_B", "val_loss_D_B_real", "val_loss_D_B_fake"
+                    "val_loss_G_B", "val_loss_D_B_real", "val_loss_D_B_fake",
 
                     "val_loss_DL_real", "val_loss_DG_fake",
                     "val_loss_DL_A_real", "val_loss_DG_A_fake",
