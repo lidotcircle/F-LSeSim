@@ -211,8 +211,7 @@ class CUTPreModel(BaseModel):
         self.loss_G.backward()
 
         self.g_param_norm, self.g_num_params = computeModelParametersNorm1(self.netG)
-        self.g_grad_norm, g_num_params = computeModelGradientsNorm1(self.netG)
-        assert g_num_params == self.g_num_params
+        self.g_grad_norm, _ = computeModelGradientsNorm1(self.netG)
         self.g_param_norm = self.g_param_norm.item()
         self.g_grad_norm = self.g_grad_norm.item()
         self.g_param_norm_avg = self.g_param_norm / self.g_num_params

@@ -1,3 +1,5 @@
+import re
+from torch.nn.parameter import Parameter
 from typing import List
 import torch
 import torch.nn as nn
@@ -50,6 +52,7 @@ class ResnetGenerator(nn.Module):
             ResnetBlock(ngf * mult, use_bias=False),
             nn.Conv2d(ngf * mult, ngf * mult, kernel_size=1, stride=1, bias=True),
             nn.ReLU(True),
+            FMNorm(num_channels=ngf * mult),
         ]
 
         # Up-Sampling
@@ -101,6 +104,7 @@ class ResnetGenerator(nn.Module):
 
         actMap = self.ActMap(feature)
         x = x * actMap
+        pre_x = pre_x * (1 - actMap)
         heatmap = torch.mean(actMap, dim = 1)
         if features is not None:
             features.append(x)
@@ -117,6 +121,40 @@ class ResnetGenerator(nn.Module):
             return
 
         return x, heatmap
+
+
+class FMNorm(nn.Module):
+    def __init__(self, eps=1e-6, history_stat=True, num_channels=256):
+        super(FMNorm, self).__init__()
+        self.eps = eps
+        self.history_stat = history_stat
+        if self.history_stat:
+            self.his_min = Parameter(torch.Tensor(1, num_channels, 1, 1), requires_grad=False)
+            self.his_max = Parameter(torch.Tensor(1, num_channels, 1, 1), requires_grad=False)
+            self.hisn = Parameter(torch.Tensor(1), requires_grad=False)
+            self.his_min.data.fill_(0.0)
+            self.his_max.data.fill_(1.0)
+            self.hisn.data.fill_(0.0)
+
+    
+    def forward(self, feat: torch.Tensor):
+        min_val = torch.min(feat.view(feat.size(0), feat.size(1), -1), dim=2).values
+        max_val = torch.max(feat.view(feat.size(0), feat.size(1), -1), dim=2).values
+        min_val = min_val.unsqueeze(2).unsqueeze(3)
+        max_val = max_val.unsqueeze(2).unsqueeze(3)
+        if self.history_stat:
+            batch_size = feat.size(0)
+            m1 = min_val.mean(dim=0).unsqueeze(0)
+            m2 = max_val.mean(dim=0).unsqueeze(0)
+            new_min = self.hisn * self.his_min + m1 * batch_size
+            new_max = self.hisn * self.his_max + m2 * batch_size
+            self.hisn = Parameter(self.hisn.data + batch_size, requires_grad=False)
+            min_val = new_min / self.hisn
+            max_val = new_max / self.hisn
+            self.his_min = Parameter(min_val, requires_grad=False)
+            self.his_max = Parameter(max_val, requires_grad=False)
+        feat = (feat - min_val) / (max_val + self.eps)
+        return feat
 
 
 class ResnetBlock(nn.Module):
