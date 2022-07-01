@@ -1,9 +1,9 @@
-from collections import UserDict
 import torch
 import itertools
 from util.util import flatten_list
 from .base_model import BaseModel
 from . import losses
+from imaginaire.config import AttrDict
 from imaginaire.utils.misc import random_shift
 from imaginaire.losses import GaussianKLLoss, PerceptualLoss
 from imaginaire.generators.munit import Generator
@@ -55,14 +55,14 @@ class MUNITModel(BaseModel):
             self.model_names = ['G']
             
         self.within_latent_recon = self.opt.within_latent_recon
-        self.netG = Generator(UserDict(
+        self.netG = Generator(AttrDict(
             num_image_channels=opt.input_nc, num_filters=opt.ngf, latent_dim=8, 
             num_res_blocks=4, num_mlp_blocks=2, 
             content_norm_type='instance', style_norm_type='', decoder_norm_type='instance', weight_norm_type='',
-            num_downsamples_style=4, num_downsamples_content=2), UserDict())
+            num_downsamples_style=4, num_downsamples_content=2), AttrDict())
 
         if self.isTrain:
-            self.netD = Discriminator(UserDict(
+            self.netD = Discriminator(AttrDict(
                 patch_wise=self.opt.patch_wise_dis,
 
                 num_filters=64,
@@ -78,8 +78,9 @@ class MUNITModel(BaseModel):
 
                 # resnet dis
                 image_channels=opt.input_nc,
-                padding_mode='zeros'
-            ), UserDict())
+                padding_mode='zeros',
+                aggregation='pool'
+            ), AttrDict())
 
         if self.isTrain:
             if opt.lambda_identity > 0.0:  # only works when input and output images have the same number of channels
@@ -109,7 +110,7 @@ class MUNITModel(BaseModel):
         self.real_A = input['A' if AtoB else 'B'].to(self.device)
         self.real_B = input['B' if AtoB else 'A'].to(self.device)
         self.image_paths = input['A_paths' if AtoB else 'B_paths']
-        self.data = UserDict(images_a=self.real_A, images_b=self.real_B)
+        self.data = AttrDict(images_a=self.real_A, images_b=self.real_B)
 
     def forward(self):
         self.G_output = self.netG(

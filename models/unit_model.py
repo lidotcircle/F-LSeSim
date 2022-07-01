@@ -1,9 +1,9 @@
-from collections import UserDict
 import torch
 import itertools
 from util.util import flatten_list
 from .base_model import BaseModel
 from . import losses
+from imaginaire.config import AttrDict
 from imaginaire.utils.misc import random_shift
 from imaginaire.losses import PerceptualLoss
 from imaginaire.generators.unit import Generator
@@ -49,15 +49,15 @@ class UNITModel(BaseModel):
         else:  # during test time, only load Gs
             self.model_names = ['G']
             
-        self.netG = Generator(UserDict(
+        self.netG = Generator(AttrDict(
             num_image_channels=opt.input_nc, num_filters=opt.ngf,
             num_res_blocks=4,
             content_norm_type='instance', decoder_norm_type='instance', weight_norm_type='',
-            num_downsamples_content=2), UserDict())
+            num_downsamples_content=2), AttrDict())
 
         if self.isTrain:
-            self.netD = Discriminator(UserDict(
-                patch_wise=self.opt.patch_wise_dis,
+            self.netD = Discriminator(AttrDict(
+                patch_dis=self.opt.patch_wise_dis,
 
                 num_filters=64,
                 max_num_filters=512,
@@ -72,8 +72,9 @@ class UNITModel(BaseModel):
 
                 # resnet dis
                 image_channels=opt.input_nc,
-                padding_mode='zeros'
-            ), UserDict())
+                padding_mode='zeros',
+                aggregation='pool'
+            ), AttrDict())
 
         if self.isTrain:
             if opt.lambda_identity > 0.0:  # only works when input and output images have the same number of channels
@@ -102,7 +103,7 @@ class UNITModel(BaseModel):
         self.real_A = input['A' if AtoB else 'B'].to(self.device)
         self.real_B = input['B' if AtoB else 'A'].to(self.device)
         self.image_paths = input['A_paths' if AtoB else 'B_paths']
-        self.data = UserDict(images_a=self.real_A, images_b=self.real_B)
+        self.data = AttrDict(images_a=self.real_A, images_b=self.real_B)
 
     def forward(self):
         self.G_output = self.netG(self.data, cycle_recon=True)
