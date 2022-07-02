@@ -57,7 +57,7 @@ class MUNITModel(BaseModel):
         self.within_latent_recon = self.opt.within_latent_recon
         self.netG = Generator(AttrDict(
             num_image_channels=opt.input_nc, num_filters=opt.ngf, latent_dim=8, 
-            num_res_blocks=4, num_mlp_blocks=2, 
+            num_res_blocks=4, num_mlp_blocks=2, output_nonlinearity='tanh',
             content_norm_type='instance', style_norm_type='', decoder_norm_type='instance', weight_norm_type='',
             num_downsamples_style=4, num_downsamples_content=2), AttrDict())
 

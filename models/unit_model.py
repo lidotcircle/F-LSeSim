@@ -51,7 +51,7 @@ class UNITModel(BaseModel):
             
         self.netG = Generator(AttrDict(
             num_image_channels=opt.input_nc, num_filters=opt.ngf,
-            num_res_blocks=4,
+            num_res_blocks=4, output_nonlinearity='tanh',
             content_norm_type='instance', decoder_norm_type='instance', weight_norm_type='',
             num_downsamples_content=2), AttrDict())
 
