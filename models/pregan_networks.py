@@ -279,6 +279,7 @@ class ResnetGeneratorV3(nn.Module):
         ActMap = []
         for i in range(n_blocks):
             ActMap += [ResnetBlock(ngf * mult, use_bias=False)]
+        ActMap += [ FMNorm(num_channels=ngf * mult) ]
 
         # Transmodule
         Transmodule1 = []
