@@ -202,6 +202,27 @@
             "cwd": "${workspaceFolder}"
         },
         {
+            "name": "cut_preae",
+            "type": "python",
+            "request": "launch",
+            "program": "train.py",
+            "args": [
+                "--model", "cut_preae",
+                "--netG", "resnet_preae",
+                "--pretrained_model", "checkpoints\\pretrained\\horsezebra.pth",
+                "--dataroot", "datasets/horse2zebra",
+                "--name", "horse2zebra_cut_pre",
+                "--batch_size", "1",
+                "--num_threads", "0",
+                "--display_freq", "20",
+                "--print_freq", "20",
+                "--disable_logger",
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}"
+        },
+        {
             "name": "SC",
             "type": "python",
             "request": "launch",
