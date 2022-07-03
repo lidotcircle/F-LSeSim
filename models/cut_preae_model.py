@@ -37,7 +37,7 @@ class CUTPreAEModel(BaseModel):
         parser.add_argument('--ada_augment_p', type=float, default=0.0, help='initial augment p')
 
         parser.add_argument('--pretrained_model', type=str, required=True, help='pretrained model for extracting features')
-        parser.add_argument('--feature_layer', type=int, default=2, help='layer of the feature used to trained model')
+        parser.add_argument('--attn_mode', type=str, default='upsample', choices=['upsample', 'interp1', 'interp2', 'interp3', 'interp4'], help='attention mode')
         parser.add_argument('--learned_feature', action='store_true', help='continue optimizing parameters of pretrained model')
 
         parser.add_argument('--lambda_GAN', type=float, default=1.0, help='weight for GAN loss：GAN(G(X))')
@@ -79,7 +79,7 @@ class CUTPreAEModel(BaseModel):
         if opt.pretrained_model.strip() != '':
             self.netPre.load_state_dict(torch.load(opt.pretrained_model))
         self.learned_feature = opt.learned_feature
-        self.feature_layer = opt.feature_layer
+        self.feature_layer = 2 if opt.attn_mode in ['upsample', 'interp1', 'interp2'] else 4
         if not self.learned_feature:
             self.netPre.eval()
             for parameters in self.netPre.parameters():

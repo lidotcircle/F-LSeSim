@@ -124,7 +124,7 @@ class ResnetGenerator(nn.Module):
 
 
 class ResnetGeneratorV2(nn.Module):
-    def __init__(self, input_nc, output_nc, ngf=64, n_blocks=6, img_size=256):
+    def __init__(self, input_nc, output_nc, ngf=64, n_blocks=6, img_size=256, attn_mode:str='upsample'):
         assert(n_blocks >= 0)
         super(ResnetGeneratorV2, self).__init__()
         self.input_nc = input_nc
@@ -155,22 +155,44 @@ class ResnetGeneratorV2(nn.Module):
 
         # Class Activation Map
         ActMap = []
-        ActMap += [
-            nn.Upsample(scale_factor=2, mode='nearest'),
-            nn.ReflectionPad2d(1),
-            nn.Conv2d(256, 128, kernel_size=3, stride=1, padding=0, bias=False),
-            ILN(128),
-            nn.ReLU(True),
-            nn.Upsample(scale_factor=2, mode='nearest'),
-            nn.ReflectionPad2d(1),
-            nn.Conv2d(128, ngf * mult, kernel_size=3, stride=1, padding=0, bias=False),
-            ILN(ngf * mult),
-            nn.ReLU(True),
-            ResnetBlock(ngf * mult, use_bias=False),
-            nn.Conv2d(ngf * mult, ngf * mult, kernel_size=1, stride=1, bias=True),
-            nn.ReLU(True),
-            FMNorm(num_channels=ngf * mult),
-        ]
+        if attn_mode == 'upsample':
+            ActMap += [
+                nn.Upsample(scale_factor=2, mode='nearest'),
+                nn.ReflectionPad2d(1),
+                nn.Conv2d(256, 128, kernel_size=3, stride=1, padding=0, bias=False),
+                ILN(128),
+                nn.ReLU(True),
+                nn.Upsample(scale_factor=2, mode='nearest'),
+                nn.ReflectionPad2d(1),
+                nn.Conv2d(128, ngf * mult, kernel_size=3, stride=1, padding=0, bias=False),
+                ILN(ngf * mult),
+                nn.ReLU(True),
+                ResnetBlock(ngf * mult, use_bias=False),
+                nn.Conv2d(ngf * mult, ngf * mult, kernel_size=1, stride=1, bias=True),
+                nn.ReLU(True),
+                FMNorm(num_channels=ngf * mult),
+            ]
+        elif attn_mode =='interp1':
+            ActMap += [
+                nn.Upsample(scale_factor=4, mode='nearest'),
+                FMNorm(num_channels=ngf * mult),
+            ]
+        elif attn_mode =='interp2':
+            ActMap += [
+                nn.Conv2d(256, ngf * mult, kernel_size=1, stride=1),
+                nn.ReLU(),
+                nn.Upsample(scale_factor=4, mode='nearest'),
+                FMNorm(num_channels=ngf * mult),
+            ]
+        elif attn_mode == 'interp3':
+            ActMap += [
+                nn.Conv2d(512, ngf * mult, kernel_size=1, stride=1),
+                nn.ReLU(),
+                nn.Upsample(scale_factor=8, mode='nearest'),
+                FMNorm(num_channels=ngf * mult),
+            ]
+        else:
+            assert False
 
         # Transmodule
         Transmodule1 = []
