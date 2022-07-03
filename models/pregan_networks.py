@@ -245,6 +245,114 @@ class ResnetGeneratorV2(nn.Module):
         recon = self.UpBlock(latent)
         return x, recon, heatmap
 
+class ResnetGeneratorV3(nn.Module):
+    def __init__(self, input_nc, output_nc, ngf=64, n_blocks=6, img_size=256):
+        assert(n_blocks >= 0)
+        super(ResnetGeneratorV3, self).__init__()
+        self.input_nc = input_nc
+        self.output_nc = output_nc
+        self.ngf = ngf
+        self.n_blocks = n_blocks
+        self.img_size = img_size
+
+        DownBlock = []
+        DownBlock += [nn.ReflectionPad2d(3),
+                      nn.Conv2d(input_nc, ngf, kernel_size=7, stride=1, padding=0, bias=False),
+                      nn.InstanceNorm2d(ngf),
+                      nn.ReLU(True)]
+
+        # Down-Sampling
+        n_downsampling = 2
+        for i in range(n_downsampling):
+            mult = 2**i
+            DownBlock += [nn.ReflectionPad2d(1),
+                          nn.Conv2d(ngf * mult, ngf * mult * 2, kernel_size=3, stride=2, padding=0, bias=False),
+                          nn.InstanceNorm2d(ngf * mult * 2),
+                          nn.ReLU(True)]
+
+        # Down-Sampling Bottleneck
+        mult = 2**n_downsampling
+        for i in range(n_blocks):
+            DownBlock += [ResnetBlock(ngf * mult, use_bias=False)]
+
+        # Class Activation Map
+        ActMap = []
+        for i in range(n_blocks):
+            ActMap += [ResnetBlock(ngf * mult, use_bias=False)]
+
+        # Transmodule
+        Transmodule1 = []
+        for i in range(n_blocks // 2):
+            Transmodule1 += [ResnetBlock(ngf * mult, use_bias=False)]
+        Transmodule2= [
+            nn.Conv2d(ngf * mult * 2, ngf * mult, 1, stride=1),
+            nn.ReLU()
+            ]
+        for i in range(n_blocks // 2):
+            Transmodule2 += [ResnetBlock(ngf * mult, use_bias=False)]
+
+        # Up-Sampling
+        UpBlock = []
+        for i in range(n_blocks):
+            UpBlock += [ResnetBlock(ngf * mult, use_bias=False)]
+
+        for i in range(n_downsampling):
+            mult = 2**(n_downsampling - i)
+            UpBlock += [nn.Upsample(scale_factor=2, mode='nearest'),
+                         nn.ReflectionPad2d(1),
+                         nn.Conv2d(ngf * mult, int(ngf * mult / 2), kernel_size=3, stride=1, padding=0, bias=False),
+                         ILN(int(ngf * mult / 2)),
+                         nn.ReLU(True)]
+
+        UpBlock += [nn.ReflectionPad2d(3),
+                     nn.Conv2d(ngf, output_nc, kernel_size=7, stride=1, padding=0, bias=False),
+                     nn.Tanh()]
+
+        self.DownBlock = nn.Sequential(*DownBlock)
+        self.ActMap = nn.Sequential(*ActMap)
+        self.Transmodule1 = nn.Sequential(*Transmodule1)
+        self.Transmodule2 = nn.Sequential(*Transmodule2)
+        self.UpBlock = nn.Sequential(*UpBlock)
+
+    def forward(self, input: torch.Tensor, features:List=None, max_layer: int=-1): 
+        x: torch.Tensor = input
+        def forward_x(x, layers):
+            if features is None:
+                x = layers(x)
+                return x
+            else:
+                for _, layer in enumerate(layers):
+                    x = layer(x)
+                    features.append(x)
+                    if max_layer >= 0 and len(features) > max_layer:
+                        return None
+                return x
+        
+        x = forward_x(x, self.DownBlock)
+        if x is None:
+            return
+        latent = x
+
+        actMap = self.ActMap(latent)
+        in_x = latent * actMap
+        out_x = latent * (1 - actMap)
+        heatmap = torch.mean(actMap, dim = 1)
+
+        in_x = forward_x(in_x, self.Transmodule1)
+        if in_x is None:
+            return
+        x = torch.cat([in_x, out_x], dim=1)
+        x = forward_x(x, self.Transmodule2)
+        if x is None:
+            return
+
+        x = forward_x(x, self.UpBlock)
+        if x is None:
+            return
+
+        recon = self.UpBlock(latent)
+        return x, recon, heatmap
+
 
 class FMNorm(nn.Module):
     def __init__(self, eps=1e-6, history_stat=True, num_channels=256):

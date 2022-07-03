@@ -202,6 +202,26 @@
             "cwd": "${workspaceFolder}"
         },
         {
+            "name": "cut_ae",
+            "type": "python",
+            "request": "launch",
+            "program": "train.py",
+            "args": [
+                "--model", "cut_ae",
+                "--netG", "resnet_ae",
+                "--dataroot", "datasets/horse2zebra",
+                "--name", "horse2zebra_cut_ae",
+                "--batch_size", "1",
+                "--num_threads", "0",
+                "--display_freq", "20",
+                "--print_freq", "20",
+                "--disable_logger",
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}"
+        },
+        {
             "name": "cut_preae",
             "type": "python",
             "request": "launch",

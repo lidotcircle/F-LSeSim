@@ -3,7 +3,7 @@ from torch.optim import lr_scheduler
 from . import cyclegan_networks, stylegan_networks, cut_networks
 from .spatchgan_discriminator_pytorch import SPatchDiscriminator
 from .transtyle import Transtyle, TransDiscriminator
-from .pregan_networks import MultiYAPatch, ResnetGenerator as ResnetPre, ResnetGeneratorV2 as ResnetPreAE
+from .pregan_networks import MultiYAPatch, ResnetGenerator as ResnetPre, ResnetGeneratorV2 as ResnetPreAE, ResnetGeneratorV3 as ResnetAE
 from .nlayer_prefocus_discriminator import NLayerPreFocusDiscriminator
 
 
@@ -37,6 +37,8 @@ def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, in
         net = Transtyle(input_nc, output_nc, ngf, style_extractor=extrator, use_dropout=use_dropout, no_antialias=no_antialias, no_antialias_up=no_antialias_up, n_blocks=6, opt=opt)
     elif netG == 'resnet_pre':
         net = ResnetPre(input_nc, output_nc, ngf, n_blocks=6)
+    elif netG == 'resnet_ae':
+        net = ResnetAE(input_nc, output_nc, ngf, n_blocks=4)
     elif netG == 'resnet_preae':
         net = ResnetPreAE(input_nc, output_nc, ngf, n_blocks=4)
     elif netG == 'stylegan2':
