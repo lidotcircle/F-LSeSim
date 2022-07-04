@@ -38,6 +38,7 @@ class CUTPreAEModel(BaseModel):
 
         parser.add_argument('--pretrained_model', type=str, required=True, help='pretrained model for extracting features')
         parser.add_argument('--attn_mode', type=str, default='upsample', choices=['upsample', 'interp1', 'interp2', 'interp3', 'interp4'], help='attention mode')
+        parser.add_argument('--interp_mode', type=str, default='nearest', choices=['nearest', 'linear', 'bilinear', 'bicubic', 'trilinear'], help='attention mode')
         parser.add_argument('--learned_feature', action='store_true', help='continue optimizing parameters of pretrained model')
         parser.add_argument('--g_num_layers', type=int, default=4, help='base num layers')
 
