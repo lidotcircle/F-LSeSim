@@ -59,7 +59,7 @@ class WDVisualizer():
         self.logger.send(gpu_meminfo,  "gpumem_info")
 
     def plot_current_losses(self, epoch, counter_ratio, losses):
-        self.logger.send(losses)
+        self.logger.send(losses, gropu=f'{self.logger.default_group}-loss')
         self.send_gpuinfo()
 
     def display_current_results(self, visuals, epoch, save_result):
