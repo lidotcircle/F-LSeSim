@@ -124,7 +124,10 @@ class ResnetGenerator(nn.Module):
 
 
 class ResnetGeneratorV2(nn.Module):
-    def __init__(self, input_nc, output_nc, ngf=64, n_blocks=6, img_size=256, attn_mode:str='upsample', interp_mode:str='nearest'):
+    """
+    @param merge_mode [ 'middle', 'middle_add', 'last', 'last_add' ]
+    """
+    def __init__(self, input_nc, output_nc, ngf=64, n_blocks=6, img_size=256, merge_mode: str='middle', attn_mode:str='upsample', interp_mode:str='nearest'):
         assert(n_blocks >= 0)
         super(ResnetGeneratorV2, self).__init__()
         self.input_nc = input_nc
@@ -132,6 +135,7 @@ class ResnetGeneratorV2(nn.Module):
         self.ngf = ngf
         self.n_blocks = n_blocks
         self.img_size = img_size
+        self.merge_mode = merge_mode
 
         DownBlock = []
         DownBlock += [nn.ReflectionPad2d(3),
@@ -196,14 +200,17 @@ class ResnetGeneratorV2(nn.Module):
 
         # Transmodule
         Transmodule1 = []
-        for i in range(n_blocks // 2):
+        for i in range(n_blocks // 2 if self.merge_mode in ['middle', 'middle_add'] else n_blocks):
             Transmodule1 += [ResnetBlock(ngf * mult, use_bias=False)]
-        Transmodule2= [
-            nn.Conv2d(ngf * mult * 2, ngf * mult, 1, stride=1),
-            nn.ReLU()
-            ]
-        for i in range(n_blocks // 2):
-            Transmodule2 += [ResnetBlock(ngf * mult, use_bias=False)]
+        if self.merge_mode not in [ 'last_add' ]:
+            Transmodule2= []
+            if self.merge_mode in [ 'middle', 'last' ]:
+                Transmodule2.append(nn.Conv2d(ngf * mult * 2, ngf * mult, 1, stride=1))
+                Transmodule2.append(nn.ReLU())
+            if self.merge_mode in [ 'middle', 'middle_add' ]:
+                for i in range(n_blocks // 2):
+                    Transmodule2 += [ResnetBlock(ngf * mult, use_bias=False)]
+            self.Transmodule2 = nn.Sequential(*Transmodule2)
 
         # Up-Sampling
         UpBlock = []
@@ -225,7 +232,6 @@ class ResnetGeneratorV2(nn.Module):
         self.DownBlock = nn.Sequential(*DownBlock)
         self.ActMap = nn.Sequential(*ActMap)
         self.Transmodule1 = nn.Sequential(*Transmodule1)
-        self.Transmodule2 = nn.Sequential(*Transmodule2)
         self.UpBlock = nn.Sequential(*UpBlock)
 
     def forward(self, input: torch.Tensor, feature: torch.Tensor, features:List=None, max_layer: int=-1): 
@@ -255,10 +261,11 @@ class ResnetGeneratorV2(nn.Module):
         in_x = forward_x(in_x, self.Transmodule1)
         if in_x is None:
             return
-        x = torch.cat([in_x, out_x], dim=1)
-        x = forward_x(x, self.Transmodule2)
-        if x is None:
-            return
+        x = torch.cat([in_x, out_x], dim=1) if self.merge_mode in [ 'middle', 'last' ] else in_x + out_x
+        if self.merge_mode not in [ 'last_add' ]:
+            x = forward_x(x, self.Transmodule2)
+            if x is None:
+                return
 
         x = forward_x(x, self.UpBlock)
         if x is None:
