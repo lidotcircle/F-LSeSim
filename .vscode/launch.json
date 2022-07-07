@@ -318,6 +318,30 @@
             "cwd": "${workspaceFolder}"
         },
         {
+            "name": "CUT_preae_Metrics",
+            "type": "python",
+            "request": "launch",
+            "program": "test_metrics.py",
+            "args": [
+                "--model", "cut_preae",
+                "--netG", "resnet_preae",
+                "--dataroot", "datasets/horse2zebra",
+                "--pretrained_model", "checkpoints\\pretrained\\horse.pth",
+                "--attn_mode", "interp3", 
+                "--interp_mode", "bilinear",
+                "--merge_mode", "last_add",
+                "--only_focus",
+                "--name", "horse2zebra_cut_pre_ae",
+                "--val_batch_size", "1",
+                "--num_threads", "0",
+                "--num_test", "1000",
+                "--generate_image",
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}"
+        },
+        {
             "name": "CUT_Style_Metrics",
             "type": "python",
             "request": "launch",

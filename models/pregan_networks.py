@@ -127,7 +127,7 @@ class ResnetGeneratorV2(nn.Module):
     """
     @param merge_mode [ 'middle', 'middle_add', 'last', 'last_add' ]
     """
-    def __init__(self, input_nc, output_nc, ngf=64, n_blocks=6, img_size=256, merge_mode: str='middle', attn_mode:str='upsample', interp_mode:str='nearest'):
+    def __init__(self, input_nc, output_nc, ngf=64, n_blocks=6, img_size=256, merge_mode: str='middle', attn_mode:str='upsample', interp_mode:str='nearest', only_focus: bool=False):
         assert(n_blocks >= 0)
         super(ResnetGeneratorV2, self).__init__()
         self.input_nc = input_nc
@@ -136,6 +136,7 @@ class ResnetGeneratorV2(nn.Module):
         self.n_blocks = n_blocks
         self.img_size = img_size
         self.merge_mode = merge_mode
+        self.only_focus = only_focus
 
         DownBlock = []
         DownBlock += [nn.ReflectionPad2d(3),
@@ -255,7 +256,9 @@ class ResnetGeneratorV2(nn.Module):
 
         actMap = self.ActMap(feature)
         in_x = latent * actMap
-        out_x = latent * (1 - actMap)
+        out_x: torch.Tensor = latent * (1 - actMap)
+        if self.only_focus:
+            out_x.fill_(0)
         heatmap = torch.mean(actMap, dim = 1)
 
         in_x = forward_x(in_x, self.Transmodule1)

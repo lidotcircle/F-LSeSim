@@ -41,6 +41,7 @@ class CUTPreAEModel(BaseModel):
         parser.add_argument('--interp_mode', type=str, default='nearest', choices=['nearest', 'linear', 'bilinear', 'bicubic', 'trilinear'], help='attention mode')
         parser.add_argument('--merge_mode', type=str, default='middle', choices=['middle', 'middle_add', 'last', 'last_add'], help='merge mode')
         parser.add_argument('--learned_feature', action='store_true', help='continue optimizing parameters of pretrained model')
+        parser.add_argument('--only_focus', action='store_true', help='ignore background')
         parser.add_argument('--g_num_layers', type=int, default=4, help='base num layers')
 
         parser.add_argument('--lambda_GAN', type=float, default=1.0, help='weight for GAN loss：GAN(G(X))')
