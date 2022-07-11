@@ -154,7 +154,7 @@ class CUTPreAEModel(BaseModel):
                 discriminator_lr *= 5
 
             self.criterionIdt = torch.nn.L1Loss().to(self.device)
-            self.optimizer_G = torch.optim.Adam(self.netG.parameters(), lr=opt.lr, betas=(opt.beta1, opt.beta2))
+            self.optimizer_G = torch.optim.Adam(self.netG.parameters(), lr=opt.lr * opt.gen_lr_multiplier, betas=(opt.beta1, opt.beta2))
             self.optimizer_D = torch.optim.Adam(self.netD.parameters(), lr=discriminator_lr, betas=(opt.beta1, opt.beta2))
             self.optimizers.append(self.optimizer_G)
             self.optimizers.append(self.optimizer_D)
