@@ -127,7 +127,7 @@ class ResnetGeneratorV2(nn.Module):
     """
     @param merge_mode [ 'middle', 'middle_add', 'last', 'last_add' ]
     """
-    def __init__(self, input_nc, output_nc, ngf=64, n_blocks=6, img_size=256, merge_mode: str='middle', attn_mode:str='upsample', interp_mode:str='nearest', only_focus: bool=False):
+    def __init__(self, input_nc, output_nc, ngf=64, n_blocks=6, img_size=256, merge_mode: str='middle', attn_mode:str='upsample', interp_mode:str='nearest', only_focus: bool=False, decoder_dropout: float=0.0):
         assert(n_blocks >= 0)
         super(ResnetGeneratorV2, self).__init__()
         self.input_nc = input_nc
@@ -215,6 +215,10 @@ class ResnetGeneratorV2(nn.Module):
 
         # Up-Sampling
         UpBlock = []
+
+        if decoder_dropout > 0:
+            UpBlock.append(nn.Dropout(p=decoder_dropout))
+
         for i in range(n_blocks):
             UpBlock += [ResnetBlock(ngf * mult, use_bias=False)]
 

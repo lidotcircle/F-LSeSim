@@ -43,6 +43,7 @@ class CUTPreAEModel(BaseModel):
         parser.add_argument('--learned_feature', action='store_true', help='continue optimizing parameters of pretrained model')
         parser.add_argument('--only_focus', action='store_true', help='ignore background')
         parser.add_argument('--g_num_layers', type=int, default=4, help='base num layers')
+        parser.add_argument('--decoder_dropout', type=float, default=0.0, help='decoder input dropout')
 
         parser.add_argument('--lambda_GAN', type=float, default=1.0, help='weight for GAN loss：GAN(G(X))')
         parser.add_argument('--lambda_AE', type=float, default=3.0, help='weight for AE reconstruction loss')
