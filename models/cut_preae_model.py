@@ -45,6 +45,7 @@ class CUTPreAEModel(BaseModel):
         parser.add_argument('--g_num_layers', type=int, default=4, help='base num layers')
         parser.add_argument('--decoder_dropout', type=float, default=0.0, help='decoder input dropout')
         parser.add_argument('--vae_mode', action='store_true', help='with VAE')
+        parser.add_argument('--trans_kld', action='store_true', help='include kld of translated cases')
 
         parser.add_argument('--lambda_GAN', type=float, default=1.0, help='weight for GAN loss：GAN(G(X))')
         parser.add_argument('--lambda_AE', type=float, default=3.0, help='weight for AE reconstruction loss')
@@ -356,6 +357,10 @@ class CUTPreAEModel(BaseModel):
         if self.opt.vae_mode and self.opt.lambda_KLD > 0:
             mu, logvar = self.mu_logvar_out[2], self.mu_logvar_out[3]
             self.loss_KLD = torch.mean(-0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim=1))
+            if self.opt.trans_kld:
+                mu2, logvar2 = self.mu_logvar_out[0], self.mu_logvar_out[1]
+                loss_KLD2 = torch.mean(-0.5 * torch.sum(1 + logvar2 - mu2.pow(2) - logvar2.exp(), dim=1))
+                self.loss_KLD = self.loss_KLD + loss_KLD2
         else:
             self.loss_KLD = 0
 
