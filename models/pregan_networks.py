@@ -127,7 +127,7 @@ class ResnetGeneratorV2(nn.Module):
     """
     @param merge_mode [ 'middle', 'middle_add', 'last', 'last_add' ]
     """
-    def __init__(self, input_nc, output_nc, ngf=64, n_blocks=6, img_size=256, merge_mode: str='middle', attn_mode:str='upsample', interp_mode:str='nearest', only_focus: bool=False, decoder_dropout: float=0.0):
+    def __init__(self, input_nc, output_nc, ngf=64, n_blocks=6, img_size=256, merge_mode: str='middle', attn_mode:str='upsample', interp_mode:str='nearest', only_focus: bool=False, decoder_dropout: float=0.0, vae_mode: bool=False):
         assert(n_blocks >= 0)
         super(ResnetGeneratorV2, self).__init__()
         self.input_nc = input_nc
@@ -137,6 +137,7 @@ class ResnetGeneratorV2(nn.Module):
         self.img_size = img_size
         self.merge_mode = merge_mode
         self.only_focus = only_focus
+        self.vae_mode = vae_mode
 
         DownBlock = []
         DownBlock += [nn.ReflectionPad2d(3),
@@ -213,6 +214,9 @@ class ResnetGeneratorV2(nn.Module):
                     Transmodule2 += [ResnetBlock(ngf * mult, use_bias=False)]
             self.Transmodule2 = nn.Sequential(*Transmodule2)
 
+        if self.vae_mode:
+            self.mu_logvar_net = nn.Conv2d(ngf * mult, 2 * ngf * mult, kernel_size=1, stride=1, bias=True)
+
         # Up-Sampling
         UpBlock = []
 
@@ -239,7 +243,7 @@ class ResnetGeneratorV2(nn.Module):
         self.Transmodule1 = nn.Sequential(*Transmodule1)
         self.UpBlock = nn.Sequential(*UpBlock)
 
-    def forward(self, input: torch.Tensor, feature: torch.Tensor, features:List=None, max_layer: int=-1): 
+    def forward(self, input: torch.Tensor, feature: torch.Tensor, features:List=None, max_layer: int=-1, mu_logvar_out: list=None):
         x: torch.Tensor = input
         def forward_x(x, layers):
             if features is None:
@@ -274,6 +278,10 @@ class ResnetGeneratorV2(nn.Module):
             if x is None:
                 return
 
+        if self.vae_mode:
+            x = self.vae_reparam(x, mu_logvar_out)
+            latent = self.vae_reparam(latent, mu_logvar_out)
+
         x = forward_x(x, self.UpBlock)
         if x is None:
             return
@@ -281,6 +289,27 @@ class ResnetGeneratorV2(nn.Module):
         recon = self.UpBlock(latent)
         return x, recon, heatmap
 
+    def vae_reparam(self, x, mu_logvar_out: list=None):
+        if not self.vae_mode:
+            return x
+        x = self.mu_logvar_net(x)
+        mu = x[:, :x.size(1) // 2]
+        logvar = x[:, x.size(1) // 2:]
+        if mu_logvar_out is not None:
+            mu_logvar_out += [mu, logvar]
+        x = self.gaussian_reparameterization(mu, logvar)
+        return x
+
+    def gaussian_reparameterization(self, mu, logvar):
+        mu_shape = mu.shape
+        mu = mu.view(mu.size(0), -1)
+        logvar = logvar.view(logvar.size(0), -1)
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+        ans = mu + eps * std
+        return ans.view(mu_shape)
+
+ 
 class ResnetGeneratorV3(nn.Module):
     def __init__(self, input_nc, output_nc, ngf=64, n_blocks=6, img_size=256):
         assert(n_blocks >= 0)

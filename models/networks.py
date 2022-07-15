@@ -43,7 +43,7 @@ def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, in
         net = ResnetPreAE(
             input_nc, output_nc, ngf, n_blocks=opt.g_num_layers,
             attn_mode=opt.attn_mode, interp_mode=opt.interp_mode, merge_mode=opt.merge_mode,
-            only_focus=opt.only_focus, decoder_dropout=opt.decoder_dropout)
+            only_focus=opt.only_focus, decoder_dropout=opt.decoder_dropout, vae_mode=opt.vae_mode)
     elif netG == 'stylegan2':
         net = stylegan_networks.StyleGAN2Generator(input_nc, output_nc, ngf, opt=opt)
     else:

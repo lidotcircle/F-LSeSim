@@ -44,9 +44,11 @@ class CUTPreAEModel(BaseModel):
         parser.add_argument('--only_focus', action='store_true', help='ignore background')
         parser.add_argument('--g_num_layers', type=int, default=4, help='base num layers')
         parser.add_argument('--decoder_dropout', type=float, default=0.0, help='decoder input dropout')
+        parser.add_argument('--vae_mode', action='store_true', help='with VAE')
 
         parser.add_argument('--lambda_GAN', type=float, default=1.0, help='weight for GAN loss：GAN(G(X))')
         parser.add_argument('--lambda_AE', type=float, default=3.0, help='weight for AE reconstruction loss')
+        parser.add_argument('--lambda_KLD', type=float, default=1.0, help='kld weight')
         parser.add_argument('--lambda_NCE', type=float, default=1.0, help='weight for NCE loss: NCE(G(X), X)')
         parser.add_argument('--nce_idt', type=util.str2bool, nargs='?', const=True, default=False, help='use NCE loss for identity mapping: NCE(G(Y), Y))')
         parser.add_argument('--nce_layers', type=str, default='0,4,8,12,16', help='compute NCE loss on which layers')
@@ -109,7 +111,7 @@ class CUTPreAEModel(BaseModel):
 
         # specify the training losses you want to print out.
         # The training/test scripts will call <BaseModel.get_current_losses>
-        self.loss_names = ['G_GAN', 'D_real', 'D_fake', 'G', 'NCE', 'AE']
+        self.loss_names = ['G_GAN', 'D_real', 'D_fake', 'G', 'NCE', 'AE', 'KLD']
         self.visual_names = ['real_A', 'fake_B', 'rec_A', 'real_B', 'rec_B', 'heatmap_A', 'heatmap_B']
         self.nce_layers = [int(i) for i in self.opt.nce_layers.split(',')]
         self.max_nce_layer = max(self.nce_layers)
@@ -254,7 +256,8 @@ class CUTPreAEModel(BaseModel):
             del self.idt_B
 
         self.feat_real = self.get_feature(self.real)
-        self.fake, rec, heatmaps = self.netG(self.real, self.feat_real)
+        self.mu_logvar_out = [] if self.opt.vae_mode else None
+        self.fake, rec, heatmaps = self.netG(self.real, self.feat_real, mu_logvar_out=self.mu_logvar_out)
         self.fake_B = self.fake[:self.real_A.size(0)]
         self.rec_A = rec[:self.real_A.size(0)] 
         self.rec_B = rec[self.real_A.size(0):]
@@ -350,7 +353,13 @@ class CUTPreAEModel(BaseModel):
         loss_B_recon = self.criterionIdt(self.rec_B, self.real_B)
         self.loss_AE = 0.5 * (loss_A_recon + loss_B_recon)
 
-        self.loss_G = self.loss_G_GAN + loss_NCE_both * self.opt.lambda_NCE + self.loss_AE * self.opt.lambda_AE
+        if self.opt.vae_mode and self.opt.lambda_KLD > 0:
+            mu, logvar = self.mu_logvar_out[2], self.mu_logvar_out[3]
+            self.loss_KLD = torch.mean(-0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim=1))
+        else:
+            self.loss_KLD = 0
+
+        self.loss_G = self.loss_G_GAN + loss_NCE_both * self.opt.lambda_NCE + self.loss_AE * self.opt.lambda_AE + self.loss_KLD * self.opt.lambda_KLD
         return self.loss_G
 
     def calculate_NCE_loss(self, src, tgt):
