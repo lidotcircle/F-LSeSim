@@ -118,6 +118,11 @@ class CUTPreAEModel(BaseModel):
         self.nce_layers = [int(i) for i in self.opt.nce_layers.split(',')]
         self.max_nce_layer = max(self.nce_layers)
 
+        if opt.gan_mode == 'wgangp':
+            self.loss_names.append('D_gp')
+            if opt.vae_mode:
+                self.loss_names.append('DV_gp')
+
         self.loss_G_GAN = 0
         self.loss_D_real = 0
         self.loss_D_fake = 0
