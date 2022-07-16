@@ -50,6 +50,7 @@ class CUTPreAEModel(BaseModel):
         parser.add_argument('--lambda_GAN', type=float, default=1.0, help='weight for GAN loss：GAN(G(X))')
         parser.add_argument('--lambda_AE', type=float, default=3.0, help='weight for AE reconstruction loss')
         parser.add_argument('--lambda_KLD', type=float, default=1.0, help='kld weight')
+        parser.add_argument('--lambda_NO', type=float, default=0, help='heatmap non-focus region')
         parser.add_argument('--lambda_NCE', type=float, default=1.0, help='weight for NCE loss: NCE(G(X), X)')
         parser.add_argument('--nce_idt', type=util.str2bool, nargs='?', const=True, default=False, help='use NCE loss for identity mapping: NCE(G(Y), Y))')
         parser.add_argument('--nce_layers', type=str, default='0,4,8,12,16', help='compute NCE loss on which layers')
@@ -112,7 +113,7 @@ class CUTPreAEModel(BaseModel):
 
         # specify the training losses you want to print out.
         # The training/test scripts will call <BaseModel.get_current_losses>
-        self.loss_names = ['G_GAN', 'D_real', 'D_fake', 'G', 'NCE', 'AE', 'KLD']
+        self.loss_names = ['G_GAN', 'D_real', 'D_fake', 'G', 'NCE', 'AE', 'KLD', 'focus']
         self.visual_names = ['real_A', 'fake_B', 'rec_A', 'real_B', 'rec_B', 'heatmap_A', 'heatmap_B']
         self.nce_layers = [int(i) for i in self.opt.nce_layers.split(',')]
         self.max_nce_layer = max(self.nce_layers)
@@ -265,7 +266,8 @@ class CUTPreAEModel(BaseModel):
         self.heatmap_h_A: torch.Tensor = heatmaps[:self.real_A.size(0)].detach()
         if self.real.size(0) > self.real_A.size(0):
             self.idt_B = self.fake[self.real_A.size(0):]
-            self.heatmap_h_B: torch.Tensor = heatmaps[self.real_A.size(0):].detach()
+            self.heatmap_hB: torch.Tensor = heatmaps[self.real_A.size(0):]
+            self.heatmap_h_B = self.heatmap_hB.detach()
 
     def compute_visuals(self):
         """Calculate additional output images for visdom and HTML visualization"""
@@ -339,6 +341,11 @@ class CUTPreAEModel(BaseModel):
             self.loss_G_GAN = 0.0
             self.dis_stats.report_train_loss(0)
 
+        if self.opt.lambda_NO > 0:
+            self.loss_focus = self.heatmap_hB.mean()
+        else:
+            self.loss_focus = 0
+
         if self.opt.lambda_NCE > 0.0:
             self.loss_NCE = self.calculate_NCE_loss(self.real_A, self.fake_B)
         else:
@@ -364,7 +371,7 @@ class CUTPreAEModel(BaseModel):
         else:
             self.loss_KLD = 0
 
-        self.loss_G = self.loss_G_GAN + loss_NCE_both * self.opt.lambda_NCE + self.loss_AE * self.opt.lambda_AE + self.loss_KLD * self.opt.lambda_KLD
+        self.loss_G = self.loss_G_GAN + loss_NCE_both * self.opt.lambda_NCE + self.loss_AE * self.opt.lambda_AE + self.loss_KLD * self.opt.lambda_KLD + self.loss_focus * self.opt.lambda_NO
         return self.loss_G
 
     def calculate_NCE_loss(self, src, tgt):
