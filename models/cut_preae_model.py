@@ -146,6 +146,10 @@ class CUTPreAEModel(BaseModel):
 
         if self.isTrain:
             self.netD = networks.define_D(opt.output_nc, opt.ndf, opt.netD, opt.n_layers_D, opt.normD, opt.init_type, opt.init_gain, opt.no_antialias, self.gpu_ids, opt)
+            if opt.vae_mode:
+                self.netDV = networks.define_D(opt.output_nc, opt.ndf, opt.netD, opt.n_layers_D, opt.normD, opt.init_type, opt.init_gain, opt.no_antialias, self.gpu_ids, opt)
+                self.model_names.append("DV")
+                self.loss_names += ["VAE_GAN", "DV_real", "DV_fake"]
 
             # define loss functions
             self.criterionGAN = losses.GANLoss(opt.gan_mode).to(self.device)
@@ -163,6 +167,9 @@ class CUTPreAEModel(BaseModel):
             self.optimizer_D = torch.optim.Adam(self.netD.parameters(), lr=discriminator_lr, betas=(opt.beta1, opt.beta2))
             self.optimizers.append(self.optimizer_G)
             self.optimizers.append(self.optimizer_D)
+            if opt.vae_mode:
+                self.optimizer_DV = torch.optim.Adam(self.netDV.parameters(), lr=discriminator_lr, betas=(opt.beta1, opt.beta2))
+                self.optimizers.append(self.optimizer_DV)
             if self.learned_feature:
                 self.optimizer_Pre = torch.optim.Adam(self.netPre.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
                 self.optimizers.append(self.optimizer_Pre)
@@ -210,9 +217,17 @@ class CUTPreAEModel(BaseModel):
         self.loss_D = self.compute_D_loss()
         self.loss_D.backward()
         self.optimizer_D.step()
+        if self.opt.vae_mode:
+            self.set_requires_grad(self.netDV, True)
+            self.optimizer_DV.zero_grad()
+            self.loss_DV = self.compute_DV_loss()
+            self.loss_DV.backward()
+            self.optimizer_DV.step()
 
         # update G
         self.set_requires_grad(self.netD, False)
+        if self.opt.vae_mode:
+            self.set_requires_grad(self.netDV, False)
         self.optimizer_G.zero_grad()
         if self.opt.netF == 'mlp_sample' and self.opt.lambda_NCE > 0.0:
             self.optimizer_F.zero_grad()
@@ -263,6 +278,7 @@ class CUTPreAEModel(BaseModel):
         self.fake_B = self.fake[:self.real_A.size(0)]
         self.rec_A = rec[:self.real_A.size(0)] 
         self.rec_B = rec[self.real_A.size(0):]
+        self.rec = rec
         self.heatmap_h_A: torch.Tensor = heatmaps[:self.real_A.size(0)].detach()
         if self.real.size(0) > self.real_A.size(0):
             self.idt_B = self.fake[self.real_A.size(0):]
@@ -326,6 +342,27 @@ class CUTPreAEModel(BaseModel):
             self.loss_D = self.loss_D + self.loss_D_gp * 10
         return self.loss_D
 
+    def compute_DV_loss(self):
+        """Calculate GAN loss for the discriminator"""
+        fake = self.rec.detach()
+        real = self.real
+
+        # Fake; stop backprop to the generator by detaching fake_B
+        pred_fake = self.netDV(fake)
+        self.loss_DV_fake = self.criterionGAN(pred_fake, False).mean()
+        # Real
+        pred_real = self.netDV(real)
+        self.loss_DV_real = self.criterionGAN(pred_real, True).mean()
+
+        # combine loss and calculate gradients
+        self.loss_DV = (self.loss_DV_fake + self.loss_DV_real) * 0.5
+
+        if self.opt.gan_mode == 'wgangp':
+            self.loss_DV_gp, gradients = networks.cal_gradient_penalty(self.netDV, real, fake, self.device, lambda_gp=1)
+            self.dis_grad_norm = torch.norm(gradients).item()
+            self.loss_DV = self.loss_DV + self.loss_DV_gp * 10
+        return self.loss_DV
+
     def compute_G_loss(self):
         """Calculate GAN and NCE loss for the generator"""
         fake = self.fake_B
@@ -340,6 +377,10 @@ class CUTPreAEModel(BaseModel):
         else:
             self.loss_G_GAN = 0.0
             self.dis_stats.report_train_loss(0)
+
+        if self.opt.vae_mode and self.opt.lambda_GAN > 0.0:
+            pred_fake = self.netDV(self.rec)
+            self.loss_VAE_GAN = self.criterionGAN(pred_fake, True).mean() * self.opt.lambda_GAN
 
         if self.opt.lambda_NO > 0:
             self.loss_focus = self.heatmap_hB.mean()
