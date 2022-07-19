@@ -18,6 +18,7 @@ See options/base_options.py and options/train_options.py for more training optio
 See training and test tips at: https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/docs/tips.md
 See frequently asked questions at: https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/docs/qa.md
 """
+import math
 import time
 import json
 import torch
@@ -49,6 +50,14 @@ if __name__ == '__main__':
         print(msg)
     total_iters = len(dataset) * (opt.epoch_count - 1)    # the total number of training iterations
 
+    if opt.total_iters > 0:
+        total_epoch = opt.total_iters / dataset_size
+        ratio = total_epoch / (opt.n_epochs + opt.n_epochs_decay)
+        opt.n_epochs = math.ceil(ratio * opt.n_epochs)
+        opt.n_epochs_decay = math.ceil(ratio * opt.n_epochs_decay)
+        info(f"rewrite opt.n_epochs={opt.n_epochs}, opt.n_epochs_decay={opt.n_epochs_decay}")
+
+    last_epoch = opt.n_epochs + opt.n_epochs_decay
     for epoch in range(opt.epoch_count, opt.n_epochs + opt.n_epochs_decay + 1):    # outer loop for different epochs; we save the model by <epoch_count>, <epoch_count>+<save_latest_freq>
         epoch_start_time = time.time()  # timer for entire epoch
         iter_data_time = time.time()    # timer for data loading per iteration
@@ -108,7 +117,7 @@ if __name__ == '__main__':
 
             iter_data_time = time.time()
 
-        if epoch >= opt.metric_start_epoch and epoch % opt.metric_eval_freq == 0:
+        if epoch == last_epoch or (epoch >= opt.metric_start_epoch and epoch % opt.metric_eval_freq == 0):
             metrics_stats_array = model.eval_metrics(epoch=epoch, num_test=1000)
             send_stats = {}
             send_stats['epoch'] = epoch
@@ -118,7 +127,7 @@ if __name__ == '__main__':
                     send_stats[f'{k}_{i}'] = metrics[k]
             visualizer.logger.send(send_stats, "Metrics", True)
 
-        if epoch % opt.save_epoch_freq == 0:              # cache our model every <save_epoch_freq> epochs
+        if epoch % opt.save_epoch_freq == 0 or epoch == last_epoch:  # cache our model every <save_epoch_freq> epochs
             info('saving the model at the end of epoch %d, iters %d' % (epoch, total_iters))
             model.save_networks('latest')
             model.save_networks(epoch)
