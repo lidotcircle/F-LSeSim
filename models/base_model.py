@@ -326,7 +326,7 @@ class BaseModel(ABC):
 
     def translate_test_images(self, epoch = 0, num_test=50):
         result_dir = os.path.abspath(os.path.join(".", "results", self.opt.name, f"test_{epoch}"))
-        test_dataset = create_dataset(copyconf(self.opt, phase="test", batch_size=self.opt.val_batch_size))
+        test_dataset = create_dataset(copyconf(self.opt, phase="test", isTrain=False, preprocess='resize', batch_size=self.opt.val_batch_size))
         return self.translate_images(test_dataset, result_dir, num_test=num_test)
 
     def eval_metrics(self, epoch = 0, num_test=50) -> List[dict]:
@@ -363,7 +363,7 @@ class BaseModel(ABC):
         return ans
 
     def eval_metrics_no(self, num_test=50) -> List[dict]:
-        test_dataset = create_dataset(copyconf(self.opt, phase="test", batch_size=self.opt.val_batch_size))
+        test_dataset = create_dataset(copyconf(self.opt, phase="test", isTrain=False, preprocess='resize', batch_size=self.opt.val_batch_size))
         images = self.translate_images_iter(test_dataset, num_test=num_test)
         stats = calculate_scores_given_iter(
                                 map(lambda b: [b[0], b[1], b[2], b[3]], images), self.device, dims=2048,
