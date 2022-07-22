@@ -5,6 +5,7 @@ from .spatchgan_discriminator_pytorch import SPatchDiscriminator
 from .transtyle import Transtyle, TransDiscriminator
 from .pregan_networks import MultiYAPatch, ResnetGenerator as ResnetPre, ResnetGeneratorV2 as ResnetPreAE, ResnetGeneratorV3 as ResnetAE
 from .nlayer_prefocus_discriminator import NLayerPreFocusDiscriminator
+from .cvt import CvTGenerator, CvTDiscriminator
 
 
 ##################################################################################
@@ -37,6 +38,8 @@ def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, in
         net = Transtyle(input_nc, output_nc, ngf, style_extractor=extrator, use_dropout=use_dropout, no_antialias=no_antialias, no_antialias_up=no_antialias_up, n_blocks=6, opt=opt)
     elif netG == 'resnet_pre':
         net = ResnetPre(input_nc, output_nc, ngf, n_blocks=6)
+    elif netG == 'cvt_gen':
+        net = CvTGenerator()
     elif netG == 'resnet_ae':
         net = ResnetAE(input_nc, output_nc, ngf, n_blocks=4)
     elif netG == 'resnet_preae':
@@ -72,6 +75,8 @@ def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal'
     elif netD == 'prefocus':
         premodel: str = opt.DFocus_pretrained_model
         net = NLayerPreFocusDiscriminator(input_nc, premodel, ndf, n_layers_D, norm_value)
+    elif netD == 'cvt_dis':
+        net = CvTDiscriminator()
     elif netD == 'multipatch':
         layers = []
         str_layers: str = opt.multipatch_layers

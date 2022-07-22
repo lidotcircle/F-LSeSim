@@ -1,3 +1,4 @@
+from audioop import reverse
 import torch
 from torch import nn, einsum
 import torch.nn.functional as F
@@ -175,3 +176,83 @@ class CvT(nn.Module):
     def forward(self, x):
         latents = self.layers(x)
         return self.to_logits(latents)
+
+
+class CvTGenerator(nn.Module):
+    def __init__(
+        self,
+        *,
+        s1_emb_dim = 64,
+        s1_emb_kernel = 7,
+        s1_emb_stride = 4,
+        s1_proj_kernel = 3,
+        s1_kv_proj_stride = 2,
+        s1_heads = 1,
+        s1_depth = 1,
+        s1_mlp_mult = 4,
+        s2_emb_dim = 192,
+        s2_emb_kernel = 3,
+        s2_emb_stride = 2,
+        s2_proj_kernel = 3,
+        s2_kv_proj_stride = 2,
+        s2_heads = 3,
+        s2_depth = 2,
+        s2_mlp_mult = 4,
+        s3_emb_dim = 384,
+        s3_emb_kernel = 3,
+        s3_emb_stride = 2,
+        s3_proj_kernel = 3,
+        s3_kv_proj_stride = 2,
+        s3_heads = 6,
+        s3_depth = 10,
+        s3_mlp_mult = 4,
+        dropout = 0.
+    ):
+        super().__init__()
+        kwargs = dict(locals())
+
+        dim = 3
+        layers = []
+        reverse_layers = []
+
+        for prefix in ('s1', 's2', 's3'):
+            config, kwargs = group_by_key_prefix_and_remove_prefix(f'{prefix}_', kwargs)
+
+            layers += [
+                nn.Conv2d(dim, config['emb_dim'], kernel_size = config['emb_kernel'], padding = (config['emb_kernel'] // 2), stride = config['emb_stride']),
+                LayerNorm(config['emb_dim']),
+                Transformer(dim = config['emb_dim'], proj_kernel = config['proj_kernel'], kv_proj_stride = config['kv_proj_stride'], depth = config['depth'], heads = config['heads'], mlp_mult = config['mlp_mult'], dropout = dropout)
+            ]
+
+            reverse_layers = [
+                Transformer(dim = config['emb_dim'], proj_kernel = config['proj_kernel'], kv_proj_stride = config['kv_proj_stride'], depth = config['depth'], heads = config['heads'], mlp_mult = config['mlp_mult'], dropout = dropout),
+                LayerNorm(config['emb_dim']),
+                nn.ConvTranspose2d(config['emb_dim'], dim, kernel_size=config['emb_kernel'], padding=(config['emb_kernel'] // 2), output_padding=(config['emb_kernel'] // 2), stride=config['emb_stride'])
+            ] + reverse_layers
+
+            dim = config['emb_dim']
+
+        self.layers = nn.Sequential(*(layers + reverse_layers))
+
+    def forward(self, x, layers=[], encode_only=False):
+        if len(layers) == 0:
+            return self.layers(x), None
+        
+        features = []
+        feat = x
+        for id, layer in enumerate(self.layers):
+            feat = layer(feat)
+            if id in layers:
+                features.append(feat)
+                if len(features) == len(layers) and encode_only:
+                    return None, features
+        return feat, features
+
+
+class CvTDiscriminator(nn.Module):
+    def __init__(self, **kwargs):
+        super().__init__()
+        self.cvt = CvT(num_classes=1, **kwargs)
+    
+    def forward(self, *args, **kwargs):
+        return self.cvt.forward(*args, **kwargs)
