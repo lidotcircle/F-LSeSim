@@ -204,7 +204,7 @@ class CvTGenerator(nn.Module):
         s3_proj_kernel = 3,
         s3_kv_proj_stride = 2,
         s3_heads = 6,
-        s3_depth = 10,
+        s3_depth = 3,
         s3_mlp_mult = 4,
         dropout = 0.
     ):
@@ -232,7 +232,11 @@ class CvTGenerator(nn.Module):
 
             dim = config['emb_dim']
 
-        self.layers = nn.Sequential(*(layers + reverse_layers))
+        output_layers = [nn.ReflectionPad2d(3),
+                         nn.Conv2d(3, 3, kernel_size=7, padding=0),
+                         nn.Tanh()]
+
+        self.layers = nn.Sequential(*(layers + reverse_layers + output_layers))
 
     def forward(self, x, layers=[], encode_only=False):
         if len(layers) == 0:
@@ -250,9 +254,58 @@ class CvTGenerator(nn.Module):
 
 
 class CvTDiscriminator(nn.Module):
-    def __init__(self, **kwargs):
+    def __init__(self, 
+        s1_emb_dim = 64,
+        s1_emb_kernel = 7,
+        s1_emb_stride = 4,
+        s1_proj_kernel = 3,
+        s1_kv_proj_stride = 2,
+        s1_heads = 1,
+        s1_depth = 1,
+        s1_mlp_mult = 4,
+        s2_emb_dim = 192,
+        s2_emb_kernel = 3,
+        s2_emb_stride = 2,
+        s2_proj_kernel = 3,
+        s2_kv_proj_stride = 2,
+        s2_heads = 3,
+        s2_depth = 2,
+        s2_mlp_mult = 4,
+        s3_emb_dim = 384,
+        s3_emb_kernel = 3,
+        s3_emb_stride = 2,
+        s3_proj_kernel = 3,
+        s3_kv_proj_stride = 2,
+        s3_heads = 6,
+        s3_depth = 4,
+        s3_mlp_mult = 4):
         super().__init__()
-        self.cvt = CvT(num_classes=1, **kwargs)
+        self.cvt = CvT(num_classes=1,
+            s1_emb_dim = s1_emb_dim,
+            s1_emb_kernel = s1_emb_kernel,
+            s1_emb_stride = s1_emb_stride,
+            s1_proj_kernel = s1_proj_kernel,
+            s1_kv_proj_stride = s1_kv_proj_stride,
+            s1_heads = s1_heads,
+            s1_depth = s1_depth,
+            s1_mlp_mult = s1_mlp_mult,
+            s2_emb_dim = s2_emb_dim,
+            s2_emb_kernel = s2_emb_kernel,
+            s2_emb_stride = s2_emb_stride,
+            s2_proj_kernel = s2_proj_kernel,
+            s2_kv_proj_stride = s2_kv_proj_stride,
+            s2_heads = s2_heads,
+            s2_depth = s2_depth,
+            s2_mlp_mult = s2_mlp_mult,
+            s3_emb_dim = s3_emb_dim,
+            s3_emb_kernel = s3_emb_kernel,
+            s3_emb_stride = s3_emb_stride,
+            s3_proj_kernel = s3_proj_kernel,
+            s3_kv_proj_stride = s3_kv_proj_stride,
+            s3_heads = s3_heads,
+            s3_depth = s3_depth,
+            s3_mlp_mult = s3_mlp_mult,
+        )
     
     def forward(self, *args, **kwargs):
         return self.cvt.forward(*args, **kwargs)
