@@ -204,6 +204,15 @@ class CUTModel(BaseModel):
         self.optimizer_D.zero_grad()
         self.loss_D = self.compute_D_loss()
         self.loss_D.backward()
+
+        if self.opt.param_stats:
+            self.d_param_norm, self.d_num_params = computeModelParametersNorm1(self.netD)
+            self.d_grad_norm, d_num_grad_params = computeModelGradientsNorm1(self.netD)
+            self.d_param_norm = self.d_param_norm.item()
+            self.d_grad_norm = self.d_grad_norm.item()
+            self.d_param_norm_avg = self.d_param_norm / self.d_num_params
+            self.d_grad_norm_avg = self.d_grad_norm / d_num_grad_params
+
         self.optimizer_D.step()
 
         # update G
@@ -214,13 +223,13 @@ class CUTModel(BaseModel):
         self.loss_G = self.compute_G_loss()
         self.loss_G.backward()
 
-        self.g_param_norm, self.g_num_params = computeModelParametersNorm1(self.netG)
-        self.g_grad_norm, g_num_params = computeModelGradientsNorm1(self.netG)
-        assert g_num_params == self.g_num_params
-        self.g_param_norm = self.g_param_norm.item()
-        self.g_grad_norm = self.g_grad_norm.item()
-        self.g_param_norm_avg = self.g_param_norm / self.g_num_params
-        self.g_grad_norm_avg = self.g_grad_norm / self.g_num_params
+        if self.opt.param_stats:
+            self.g_param_norm, self.g_num_params = computeModelParametersNorm1(self.netG)
+            self.g_grad_norm, g_num_grad_params = computeModelGradientsNorm1(self.netG)
+            self.g_param_norm = self.g_param_norm.item()
+            self.g_grad_norm = self.g_grad_norm.item()
+            self.g_param_norm_avg = self.g_param_norm / self.g_num_params
+            self.g_grad_norm_avg = self.g_grad_norm / g_num_grad_params
 
         self.optimizer_G.step()
         if self.opt.netF == 'mlp_sample' and self.opt.lambda_NCE > 0.0:

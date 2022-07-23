@@ -106,6 +106,23 @@ if __name__ == '__main__':
 
             if total_iters % opt.print_freq == 0:    # print training losses and save logging information to the disk
                 losses = model.get_current_losses()
+                additional_stats = {
+                    "g_param_norm":"G_Param_Norm",
+                    "g_param_norm_avg": "G_Param_Norm_Avg",
+                    "g_grad_norm":"G_grad_Norm",
+                    "g_grad_norm_avg": "G_grad_Norm_Avg",
+
+                    "d_param_norm":"D_Param_Norm",
+                    "d_param_norm_avg": "D_Param_Norm_Avg",
+                    "d_grad_norm":"D_grad_Norm",
+                    "d_grad_norm_avg": "D_grad_Norm_Avg",
+                }
+                for key, val in additional_stats.items():
+                    if hasattr(model, key):
+                        mval = getattr(model, key)
+                        if isinstance(mval, torch.Tensor):
+                            mval = mval.item()
+                        losses[val] = mval
                 t_comp = (time.time() - iter_start_time) / opt.batch_size
                 visualizer.print_current_losses(epoch, epoch_iter, losses, t_comp, t_data)
                 visualizer.plot_current_losses(epoch, float(epoch_iter) / dataset_size, losses)
