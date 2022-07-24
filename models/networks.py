@@ -3,7 +3,7 @@ from torch.optim import lr_scheduler
 from . import cyclegan_networks, stylegan_networks, cut_networks
 from .spatchgan_discriminator_pytorch import SPatchDiscriminator
 from .transtyle import Transtyle, TransDiscriminator
-from .pregan_networks import MultiYAPatch, ResnetGenerator as ResnetPre, ResnetGeneratorV2 as ResnetPreAE, ResnetGeneratorV3 as ResnetAE
+from .pregan_networks import MultiYAPatch, ResnetGenerator as ResnetPre, ResnetGeneratorV2 as ResnetPreAE, ResnetGeneratorV3 as ResnetAE, ResnetSepGenerator
 from .nlayer_prefocus_discriminator import NLayerPreFocusDiscriminator
 from .cvt import CvTGenerator, CvTDiscriminator
 
@@ -47,6 +47,12 @@ def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, in
             input_nc, output_nc, ngf, n_blocks=opt.g_num_layers,
             attn_mode=opt.attn_mode, interp_mode=opt.interp_mode, merge_mode=opt.merge_mode,
             only_focus=opt.only_focus, decoder_dropout=opt.decoder_dropout, vae_mode=opt.vae_mode)
+    elif netG == 'resnet_preae_sep':
+        net = ResnetSepGenerator(
+            input_nc, output_nc, ngf, n_blocks=opt.g_num_layers,
+            attn_mode=opt.attn_mode, interp_mode=opt.interp_mode, merge_mode=opt.merge_mode,
+            only_focus=opt.only_focus, decoder_dropout=opt.decoder_dropout)
+
     elif netG == 'stylegan2':
         net = stylegan_networks.StyleGAN2Generator(input_nc, output_nc, ngf, opt=opt)
     else:
