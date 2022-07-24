@@ -326,7 +326,13 @@ class BaseModel(ABC):
 
     def translate_test_images(self, epoch = 0, num_test=50):
         result_dir = os.path.abspath(os.path.join(".", "results", self.opt.name, f"test_{epoch}"))
-        test_dataset = create_dataset(copyconf(self.opt, phase="test", isTrain=False, preprocess='resize', batch_size=self.opt.val_batch_size))
+        test_dataset = create_dataset(copyconf(self.opt,
+            phase="test",
+            isTrain=False,
+            load_size=self.opt.crop_size,
+            serial_batches=True,
+            no_flip=True,
+            batch_size=1))
         return self.translate_images(test_dataset, result_dir, num_test=num_test)
 
     def eval_metrics(self, epoch = 0, num_test=50) -> List[dict]:
