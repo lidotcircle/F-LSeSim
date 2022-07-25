@@ -8,9 +8,9 @@ from .simple_resnet import ResNet18
 
 
 class ResNet18Feature(nn.Module):
-    def __init__(self, pretrained_model:str, num_out: int, learned_feature:bool=False):
+    def __init__(self, pretrained_model:str, num_out: int, r18_outputs: int=128, learned_feature:bool=False):
         super(ResNet18Feature, self).__init__()
-        self.resnet = ResNet18()
+        self.resnet = ResNet18(num_outputs=r18_outputs)
         if pretrained_model != '':
             self.resnet.load_state_dict(torch.load(pretrained_model))
         if not learned_feature:
@@ -291,7 +291,8 @@ class Transtyle(torch.nn.Module):
             self.styleformer = StyleFormer(num_outputs=self.num_style_outputs)
         elif style_extractor == 'simclr':
             pretrained_model = opt.resnet18_style_model
-            self.styleformer = ResNet18Feature(pretrained_model=pretrained_model, num_out=self.num_style_outputs)
+            r18_num_outputs = opt.resnet18_num_outputs
+            self.styleformer = ResNet18Feature(pretrained_model=pretrained_model, num_out=self.num_style_outputs, r18_outputs=r18_num_outputs)
         else:
             raise NotImplementedError()
         

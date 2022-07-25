@@ -40,6 +40,7 @@ class BaseOptions():
         parser.add_argument('--DFocus_pretrained_model', type=str, default='', help='pretrained resnet18 model for helping discriminator focus on critical area')
         parser.add_argument('--style_extractor', type=str, default='cvt', help='style extrator [cvt | vit | simclr]')
         parser.add_argument('--resnet18_style_model', type=str, default='', help='pretrained resnet18 model for extracting style')
+        parser.add_argument('--resnet18_num_outputs', type=int, default=128, help='num of outputs of resnet18 model')
         parser.add_argument('--multipatch_layers', type=str, default='5,7', help='n_layers of multi patch respectively')
         parser.add_argument('--n_layers_D', type=int, default=3, help='only used if netD==n_layers')
         parser.add_argument('--normG', type=str, default='instance', choices=['instance', 'batch', 'none'], help='instance normalization or batch normalization for G')
