@@ -20,4 +20,5 @@ setuptools>=49.2.1
 torch>=1.8.1
 torchvision>=0.9.1
 tqdm>=4.60.0
+timm==0.5.4
 visdom>=0.1.8.9

@@ -91,6 +91,12 @@ class BaseModel(ABC):
         if not self.isTrain or opt.continue_train:
             load_suffix = 'iter_%d' % opt.load_iter if opt.load_iter > 0 else opt.epoch
             self.load_networks(load_suffix)
+        for name in self.model_names:
+            net = getattr(self, 'net' + name)
+            if self.isTrain and hasattr(net, 'train'):
+                net.train()
+            elif hasattr(net, 'eval'):
+                net.eval()
         self.print_networks(opt.verbose)
 
     def parallelize(self):

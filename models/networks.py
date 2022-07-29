@@ -1,5 +1,7 @@
 import torch
 from torch.optim import lr_scheduler
+
+from pg_modules.discriminator import ProjectedDiscriminator
 from . import cyclegan_networks, stylegan_networks, cut_networks
 from .spatchgan_discriminator_pytorch import SPatchDiscriminator
 from .transtyle import Transtyle, TransDiscriminator
@@ -95,6 +97,8 @@ def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal'
         net = SPatchDiscriminator(stats=['mean', 'max','stddev'])
     elif netD == 'transdis':
         net = TransDiscriminator()
+    elif netD == 'proj_eff':
+        net = ProjectedDiscriminator(diffaug=True)
     elif 'stylegan2' in netD:
         net = stylegan_networks.StyleGAN2Discriminator(input_nc, ndf, opt=opt)
     else:
