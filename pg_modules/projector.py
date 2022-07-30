@@ -126,8 +126,12 @@ class F_RandomProj(nn.Module):
         self.pretrained, self.scratch = _make_projector(im_res=im_res, cout=self.cout, proj_type=self.proj_type, expand=self.expand, resnet18_pretrained=resnet18_model)
         self.CHANNELS = self.pretrained.CHANNELS
         self.RESOLUTIONS = self.pretrained.RESOLUTIONS
+        self.undo_norm = resnet18_model is not None
 
     def forward(self, x):
+        if self.undo_norm:
+            x = x / 2 + 0.5
+
         # predict feature maps
         out0 = self.pretrained.layer0(x)
         out1 = self.pretrained.layer1(out0)

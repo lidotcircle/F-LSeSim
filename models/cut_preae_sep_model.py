@@ -178,6 +178,7 @@ class CUTPreAESepModel(BaseModel):
 
     def get_feature(self, image):
         features = []
+        image = image / 2 + 0.5
         self.netPre(image, features)
         return features[self.feature_layer]
     

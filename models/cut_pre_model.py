@@ -158,6 +158,8 @@ class CUTPreModel(BaseModel):
 
     def get_feature(self, image):
         features = []
+        # undo normalization
+        image = image / 2 + 0.5
         self.netPre(image, features)
         return features[self.feature_layer]
     

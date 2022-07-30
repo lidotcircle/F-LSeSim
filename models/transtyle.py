@@ -27,6 +27,8 @@ class ResNet18Feature(nn.Module):
 
     def forward(self, input):
         features = []
+        # undo data normalization
+        input = input / 2 + 0.5
         self.resnet(input, features=features)
         feature = features[-1]
         return self.styleff(feature)

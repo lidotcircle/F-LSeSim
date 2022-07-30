@@ -96,7 +96,7 @@ class NLayerPreFocusDiscriminator(nn.Module):
         x = self.sequence_1(input)
 
         features = []
-        self.netPre(input, features=features)
+        self.netPre(input / 2 + 0.5, features=features)
         feature = features[self.feature_layer]
 
         act = self.actmap(feature)
