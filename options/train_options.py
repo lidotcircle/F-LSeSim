@@ -39,6 +39,8 @@ class TrainOptions(BaseOptions):
         parser.add_argument('--lr', type=float, default=0.0001, help='initial learning rate for adam')
         parser.add_argument('--gen_lr_multiplier', type=float, default=1, help='generator learning rate multiplier')
 
+        parser.add_argument('--projgan_resnet18', type=str, default=None, help='projgan_resnet18_pretrained')
+
         parser.add_argument('--gan_mode', type=str, default='lsgan', help='the type of GAN objective. [vanilla| lsgan | wgangp]. vanilla GAN loss is the cross-entropy objective used in the original GAN paper.')
         parser.add_argument('--pool_size', type=int, default=50, help='the size of image buffer that stores previously generated images')
         parser.add_argument('--lr_policy', type=str, default='linear', help='learning rate policy. [linear | step | plateau | cosine]')

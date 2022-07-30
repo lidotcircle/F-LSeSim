@@ -1,3 +1,4 @@
+from turtle import back
 import torch
 from torch.optim import lr_scheduler
 
@@ -98,7 +99,8 @@ def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal'
     elif netD == 'transdis':
         net = TransDiscriminator()
     elif netD == 'proj_eff':
-        net = ProjectedDiscriminator(diffaug=True)
+        proj_resnet18: str = opt.projgan_resnet18
+        net = ProjectedDiscriminator(diffaug=True, backbone_kwargs={"resnet18_model": proj_resnet18})
     elif 'stylegan2' in netD:
         net = stylegan_networks.StyleGAN2Discriminator(input_nc, ndf, opt=opt)
     else:

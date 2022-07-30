@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import timm
 from pg_modules.blocks import FeatureFusionBlock
+from models.simple_resnet import ResNet18
 
 
 def _make_scratch_ccm(scratch, in_channels, cout, expand=False):
@@ -38,6 +39,19 @@ def _make_efficientnet(model):
     pretrained.layer3 = nn.Sequential(*model.blocks[5:9])
     return pretrained
 
+def _make_resnet18(state_path: str, kargs: dict={}):
+    resnet18 = ResNet18(**kargs)
+    state_dict = torch.load(state_path)
+    resnet18.load_state_dict(state_dict)
+    for params in resnet18.parameters():
+        params.requires_grad = False
+
+    pretrained = nn.Module()
+    pretrained.layer0 = nn.Sequential(resnet18.conv1, resnet18.bn1, resnet18.relu, resnet18.maxpool, resnet18.layer1)
+    pretrained.layer1 = nn.Sequential(resnet18.layer2)
+    pretrained.layer2 = nn.Sequential(resnet18.layer3)
+    pretrained.layer3 = nn.Sequential(resnet18.layer4)
+    return pretrained
 
 def calc_channels(pretrained, inp_res=224):
     channels = []
@@ -56,12 +70,15 @@ def calc_channels(pretrained, inp_res=224):
     return channels
 
 
-def _make_projector(im_res, cout, proj_type, expand=False):
+def _make_projector(im_res, cout, proj_type, expand=False, resnet18_pretrained: str=None):
     assert proj_type in [0, 1, 2], "Invalid projection type"
 
     ### Build pretrained feature network
-    model = timm.create_model('tf_efficientnet_lite0', pretrained=True)
-    pretrained = _make_efficientnet(model)
+    if resnet18_pretrained != None:
+        pretrained = _make_resnet18(resnet18_pretrained, kargs={"num_outputs": 128})
+    else:
+        model = timm.create_model('tf_efficientnet_lite0', pretrained=True)
+        pretrained = _make_efficientnet(model)
 
     # determine resolution of feature maps, this is later used to calculate the number
     # of down blocks in the discriminators. Interestingly, the best results are achieved
@@ -97,6 +114,7 @@ class F_RandomProj(nn.Module):
         cout=64,
         expand=True,
         proj_type=2,  # 0 = no projection, 1 = cross channel mixing, 2 = cross scale mixing
+        resnet18_model: str=None,
         **kwargs,
     ):
         super().__init__()
@@ -105,7 +123,7 @@ class F_RandomProj(nn.Module):
         self.expand = expand
 
         # build pretrained feature network and random decoder (scratch)
-        self.pretrained, self.scratch = _make_projector(im_res=im_res, cout=self.cout, proj_type=self.proj_type, expand=self.expand)
+        self.pretrained, self.scratch = _make_projector(im_res=im_res, cout=self.cout, proj_type=self.proj_type, expand=self.expand, resnet18_pretrained=resnet18_model)
         self.CHANNELS = self.pretrained.CHANNELS
         self.RESOLUTIONS = self.pretrained.RESOLUTIONS
 
