@@ -90,28 +90,28 @@ class TdLogger:
     def error(self, msg: str):
         self.send({"message": msg, "level": "error"}, group=self.default_group + '-log', direct = True)
 
-    def send(self, data: dict, group: str = "", direct: bool = False):
+    def send(self, data: dict, group: str = "", direct: bool = False, priority=0):
         group = group if group != "" else self.default_group
         if not group in self.__data_list:
             self.__data_list[group] = []
         queue = self.__data_list[group]
         queue.append(data)
         if direct or len(queue) >= self.sdataNaverage:
-            self.__sendSData(self.__gen(queue), group)
+            self.__sendSData(self.__gen(queue), group, priority)
             self.__data_list[group] = []
 
-    def flush(self):
+    def flush(self, priority: int=0):
         for group in self.__data_list:
             groupdata = self.__data_list[group]
             if len(groupdata) > 0:
-                self.__sendSData(self.__gen(groupdata), group)
+                self.__sendSData(self.__gen(groupdata), group, priority)
                 self.__data_list[group] = []
 
-    def __sendSData(self, data: dict, group: str):
+    def __sendSData(self, data: dict, group: str, priority: int):
         payload = json.dumps({ "data": data, "group": self.group_prefix + group })
-        self.__sendmsg("sdata", payload)
+        self.__sendmsg("sdata", payload, priority)
 
-    def sendBlobFile(self, file: Tuple[str,bytes,io.BytesIO], blobname: str, dst: str, group: str):
+    def sendBlobFile(self, file: Tuple[str,bytes,io.BytesIO], blobname: str, dst: str, group: str, priority: int=3):
         data: bytes = None
 
         if isinstance(file, str):
@@ -122,9 +122,9 @@ class TdLogger:
         elif isinstance(file, bytes):
             data = file
 
-        self.sendBlob(data, blobname, dst, group)
+        self.sendBlob(data, blobname, dst, group, priority)
 
-    def sendBlob(self, blob: bytes, blobname: str, dst: str, group: str):
+    def sendBlob(self, blob: bytes, blobname: str, dst: str, group: str, priority: int=3):
         blob_b64 = encodebytes(blob).decode("ascii")
         msg = json.dumps({
             "blobB64": blob_b64,
@@ -132,12 +132,12 @@ class TdLogger:
             "destination": dst,
             "group": self.group_prefix + group,
         })
-        self.__sendmsg("blob", msg)
+        self.__sendmsg("blob", msg, priority)
 
-    def __sendmsg(self, msgtype: str, payload: str):
+    def __sendmsg(self, msgtype: str, payload: str, priority: int):
         if self.disabled:
             return
-        msg = json.dumps({"type": msgtype, "msg": payload})
+        msg = json.dumps({"type": msgtype, "msg": payload, "priority": priority})
         if (self._subpipe.stdin != None):
             try:
                 self._subpipe.stdin.write(msg + "\n")
@@ -245,7 +245,15 @@ class HttpLogger:
             if msg is None or len(msg) == 0:
                 self.__end = True
                 break
-            self.__msg_queue.append(msg)
+            msgobj = json.loads(msg)
+            msgpriority = msgobj['priority']
+            insert_idx = len(self.__msg_queue)
+            # TODO binary search and linked-list
+            for i in range(len(self.__msg_queue)):
+                if self.__msg_queue[i]['priority'] > msgpriority:
+                    insert_idx = i
+                    break
+            self.__msg_queue.insert(insert_idx, msgobj)
             self.__total_msg_length = self.__total_msg_length + 1
 
     async def __run_dispatchmsg(self):
@@ -259,10 +267,9 @@ class HttpLogger:
                 self.__msg_event.clear()
             async with ClientSession() as session:
                 while len(self.__msg_queue) > 0:
-                    msg: str = self.__msg_queue.pop(0)
-                    obj = json.loads(msg)
-                    msgtype = obj["type"]
-                    payload = obj["msg"]
+                    msgobj: dict = self.__msg_queue.pop(0)
+                    msgtype = msgobj["type"]
+                    payload = msgobj["msg"]
 
                     try:
                         if msgtype == "blob":
@@ -270,6 +277,7 @@ class HttpLogger:
                         elif msgtype == "sdata":
                             await self.handler_sdata(session, payload)
                     except Exception as e:
+                        msg = json.dumps(msgobj)
                         shortmsg = msg[0:min(len(msg), 200)]
                         if len(shortmsg) < len(msg):
                             shortmsg += "..."
