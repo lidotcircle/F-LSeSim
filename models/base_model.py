@@ -250,6 +250,17 @@ class BaseModel(ABC):
                 for param in net.parameters():
                     param.requires_grad = requires_grad
 
+        pretrained_names = [ 'feature_network' ]
+        if requires_grad:
+            for netname in pretrained_names:
+                for net in nets:
+                    if isinstance(net, torch.nn.DataParallel):
+                        net = net.module
+                    if hasattr(net, netname):
+                        subnet = getattr(net, netname)
+                        if isinstance(subnet, torch.nn.Module):
+                            subnet.requires_grad_(False)
+
     def generate_visuals_for_evaluation(self, data, mode):
         return {}
 
