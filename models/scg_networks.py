@@ -32,3 +32,18 @@ class Encoder(nn.Module):
         x = F.adaptive_avg_pool2d(x, 1)
         x = x.view(x.size(0), -1)
         return self.out_layer(x)
+
+
+class Generator(nn.Module):
+    def __init__(self, ngf=128, img_resolution=256, z_dim=512):
+        super().__init__()
+        self.encoder = Encoder(ngf=ngf, img_resolution=img_resolution, num_outputs=z_dim)
+        self.decoder = FastganSynthesis(ngf=ngf, z_dim=z_dim, img_resolution=img_resolution,lite=False)
+
+    def forward(self, img, latent_out: list=None):
+        latent = self.encoder(img)
+
+        if latent_out is not None:
+            latent_out.append(latent)
+
+        return self.decoder(latent.unsqueeze(1), c=None)

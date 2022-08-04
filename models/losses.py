@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
 import numpy as np
+import timm
 from .cyclegan_networks import init_net
 
 
@@ -501,3 +502,31 @@ class VGG16(nn.Module):
             else:
                 return out['relu3_1']
         return out
+
+    
+class EfficientNetLite(nn.Module):
+    def __init__(self):
+        super().__init__()
+        model = timm.create_model('tf_efficientnet_lite0', pretrained=True)
+        self.pretrained = nn.Module()
+        self.pretrained.layer0 = nn.Sequential(model.conv_stem, model.bn1, model.act1)
+        self.pretrained.blocks = model.blocks
+
+    def forward(self, x, layers=None, encode_only=False):
+        x = self.pretrained.layer0(x)
+        if layers is None:
+            return self.pretrained.blocks(x)
+        
+        feat = x
+        feats = []
+        for layer_id, layer in enumerate(self.pretrained.blocks):
+            feat = layer(feat)
+            if layer_id in layers:
+                feats.append(feat)
+            if encode_only and len(layers) == len(feats):
+                return feats
+        
+        if encode_only:
+            return feats
+        else:
+            return feat, feats
