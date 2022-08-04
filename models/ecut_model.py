@@ -15,7 +15,8 @@ class ECUTModel(BaseModel):
         parser.add_argument('--lambda_NCE', type=float, default=1.0, help='weight for NCE loss: NCE(G(X), X)')
         parser.add_argument('--nce_idt', action='store_true', help='use NCE loss for identity mapping: NCE(G(Y), Y))')
         parser.add_argument('--nce_layers', type=str, default='4,7,9', help='compute NCE loss on which layers')
-        parser.add_argument('--feature_net', type=str, default='vgg16', choices=['vgg16', 'efficientnet_lite', 'learned'], help='network for extracting features')
+        parser.add_argument('--feature_net', type=str, default='vgg16', choices=['vgg16', 'efficientnet_lite', 'resnet18', 'learned'], help='network for extracting features')
+        parser.add_argument('--resnet18_network', type=str, default=None, help='pretrained resnet18 for extracting features')
         parser.add_argument('--netF', type=str, default='mlp_sample', choices=['sample', 'reshape', 'mlp_sample'], help='how to downsample the feature map')
         parser.add_argument('--nce_includes_all_negatives_from_minibatch', action='store_true', help='includes all negatives from minibatch')
         parser.add_argument('--netF_nc', type=int, default=256)
@@ -30,10 +31,12 @@ class ECUTModel(BaseModel):
             parser.set_defaults(nce_layers="4,7,9")
         elif opt.feature_net == "efficientnet_lite":
             parser.set_defaults(nce_layers="2,4,6")
+        elif opt.feature_net == "resnet18":
+            parser.set_defaults(nce_layers="1,2,3,4")
         elif opt.feature_net == "learned":
             parser.set_defaults(nce_layers="0,4,8,12,16")
         else:
-            raise ValueError(opt.CUT_mode)
+            raise ValueError(opt.feature_net)
 
         return parser
 
@@ -71,6 +74,8 @@ class ECUTModel(BaseModel):
                 self.netPre = losses.EfficientNetLite().to(self.device)
             elif opt.feature_net == 'vgg16':
                 self.netPre = losses.VGG16().to(self.device)
+            elif opt.feature_net == 'resnet18':
+                self.netPre = losses.Resnet18E(self.opt.resnet18_network).to(self.device)
             elif opt.feature_net == 'learned':
                 self.netPre = self.netG
             else:

@@ -4,6 +4,8 @@ import torch.nn.functional as F
 import torchvision.models as models
 import numpy as np
 import timm
+
+from models.simple_resnet import ResNet18
 from .cyclegan_networks import init_net
 
 
@@ -530,3 +532,30 @@ class EfficientNetLite(nn.Module):
             return feats
         else:
             return feat, feats
+
+
+class Resnet18E(nn.Module):
+    def __init__(self, network: str):
+        super().__init__()
+        net_state = torch.load(network)
+        net = ResNet18(num_outputs=128)
+        net.load_state_dict(net_state)
+        layer0 = nn.Sequential(net.conv1, net.bn1, net.relu, net.maxpool)
+        blocks = [ layer0, net.layer1, net.layer2, net.layer3, net.layer4 ]
+        self.blocks = nn.Sequential(*blocks)
+        self.requires_grad_(False)
+
+    def forward(self, x, layers=None, encode_only=False):
+        feat = x
+        feats = []
+        for layer_id, layer in enumerate(self.blocks):
+            feat = layer(feat)
+            if layer_id in layers:
+                feats.append(feat)
+            if encode_only and len(layers) == len(feats):
+                return feats
+        
+        if encode_only:
+            return feats
+        else:
+            return None, feats
