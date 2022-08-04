@@ -88,7 +88,8 @@ class WDVisualizer():
                 image_list.append(img)
 
         image_tensor = torch.cat(image_list, dim=0)
-        image = make_grid(image_tensor, nrow = batch_size, normalize = True)
+        image_tensor = (image_tensor * 0.5 + 0.5).clamp(0, 1)
+        image = make_grid(image_tensor, nrow = batch_size)
         image_buf = io.BytesIO()
         save_image(image, image_buf, format='png')
         self.logger.sendBlobFile(image_buf, "%s.png" % (epoch), "/validation_image/%s-%s/%s.png" % (self.logger.group_prefix, "hellodataset", epoch), "validation_image")
