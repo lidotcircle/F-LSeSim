@@ -103,12 +103,15 @@ def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal'
         net = TransDiscriminator()
     elif netD == 'proj_eff':
         proj_resnet18: str = opt.projgan_resnet18
-        net = ProjectedDiscriminator(diffaug=True, backbone_kwargs={"resnet18_model": proj_resnet18})
+        net = ProjectedDiscriminator(diffaug=True, interp224=False, backbone_kwargs={"resnet18_model": proj_resnet18, "cout": 64, "expand": True, "proj_type": 2, "num_discs": 4, "separable": False})
         net.feature_network.requires_grad_(False)
     elif 'stylegan2' in netD:
         net = stylegan_networks.StyleGAN2Discriminator(input_nc, ndf, opt=opt)
     else:
         raise NotImplementedError('Discriminator model name [%s] is not recognized' % netD)
+    
+    if netD == 'proj_eff':
+        return net.to(gpu_ids[0])
     return cyclegan_networks.init_net(net, init_type, init_gain, gpu_ids, initialize_weights=('stylegan2' not in netD))
 
 
