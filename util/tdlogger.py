@@ -17,13 +17,14 @@ queue_clear_message = "QUEUE_CLEAR"
 
 class TdLogger:
     def __init__(self, endpoint: str, default_group: str, sdata_naverage: int, credential: Union[str, Tuple[str,str]], 
-                 timeout: int = 5, hint_done: bool = False, group_prefix: str = "", disabled: bool = False):
+                 timeout: int = 5, hint_done: bool = False, priority: bool=False, group_prefix: str = "", disabled: bool = False):
         self.endpoint = endpoint
         self.default_group = default_group
         self.sdataNaverage = sdata_naverage
         self.timeout = timeout
         self.credential = credential
         self.hint_done = hint_done
+        self.priority = priority
         self.group_prefix = group_prefix
         self.disabled = disabled
         assert(self.credential != "")
@@ -46,6 +47,8 @@ class TdLogger:
         
         if not self.hint_done:
             args += ["--disable_hint_done"]
+        if self.priority:
+            args += ["--priority"]
 
         self._subpipe = Popen(args, stdin=PIPE, stderr=PIPE, text=True) if self.hint_done else Popen(args, stdin=PIPE, text=True)
     
@@ -157,11 +160,13 @@ class HttpLogger:
     def __init__(self, endpoint: str, timeout: float,
                  grouptoken: str = "",
                  hint_done: bool = False,
+                 priority: bool = False,
                  username: str = "", password: str = ""):
         self.endpoint = endpoint
         self.timeout = timeout
         self.grouptoken = grouptoken
         self.hint_done = hint_done
+        self.priority = priority
         self.username = username
         self.password = password
         self.__msg_queue = []
@@ -249,10 +254,11 @@ class HttpLogger:
             msgpriority = msgobj['priority']
             insert_idx = len(self.__msg_queue)
             # TODO binary search and linked-list
-            for i in range(len(self.__msg_queue)):
-                if self.__msg_queue[i]['priority'] > msgpriority:
-                    insert_idx = i
-                    break
+            if self.priority:
+                for i in range(len(self.__msg_queue)):
+                    if self.__msg_queue[i]['priority'] > msgpriority:
+                        insert_idx = i
+                        break
             self.__msg_queue.insert(insert_idx, msgobj)
             self.__total_msg_length = self.__total_msg_length + 1
 
@@ -293,6 +299,7 @@ parser = argparse.ArgumentParser(description='Message Logger')
 parser.add_argument('--child_mode', action='store_true', help='switch to child mode, run as waiting parent process message to process')
 parser.add_argument('-a', '--endpoint',   type=str,   help='endpoint to post msg', required=True)
 parser.add_argument('-t', '--timeout',    type=float, help='http request timeout in seconds', default=5)
+parser.add_argument(      '--priority',   action='store_true', help='enalbe message priority')
 parser.add_argument('-u', '--username',   type=str,   help='service username', default=None)
 parser.add_argument('-p', '--password',   type=str,   help='service password', default=None)
 parser.add_argument('-c', '--grouptoken', type=str,   help='service grouptoken', default=None)
@@ -310,6 +317,7 @@ parser.add_argument('-x', '--pattern', type=str, help='file pattern for director
 def child_mode_action(args: argparse.Namespace):
     httplogger = HttpLogger(args.endpoint, args.timeout, 
                             hint_done=not args.disable_hint_done,
+                            priority=args.priority,
                             username=args.username, password=args.password, 
                             grouptoken=args.grouptoken)
     asyncio.run(httplogger.run())
@@ -328,7 +336,7 @@ def parent_mode_action(args: argparse.Namespace):
             fp = fp[2:]
         return fp
 
-    logger = TdLogger(args.endpoint, args.group, 1, credential, hint_done=not args.disable_hint_done)
+    logger = TdLogger(args.endpoint, args.group, 1, credential, hint_done=not args.disable_hint_done, priority=args.priority)
     if args.message is not None:
         data = {}
         data['level'] = args.level

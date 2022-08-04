@@ -54,10 +54,11 @@ class SCGModel(BaseModel):
         # define the training process
         if self.isTrain:
             self.attn_layers = [int(i) for i in self.opt.attn_layers.split(',')]
-            if opt.lambda_spatial_idt > 0.0:
+            if opt.lambda_spatial_idt > 0.0 or opt.lambda_identity:
                 # only works when input and output images have the same number of channels
                 self.visual_names.append('idt_B')
-                self.loss_names.append('G_s_idt_B')
+                if opt.lambda_spatial_idt > 0.0:
+                    self.loss_names.append('G_s_idt_B')
                 if opt.lambda_identity > 0.0:
                     self.loss_names.append('idt_B')
                 assert (opt.input_nc == opt.output_nc)
@@ -113,6 +114,7 @@ class SCGModel(BaseModel):
         l_sptial = self.opt.lambda_spatial
         l_idt = self.opt.lambda_identity
         l_spatial_idt = self.opt.lambda_spatial_idt
+        l_reg = self.opt.lambda_reg
         norm_real_A = self.normalization((self.real_A + 1) * 0.5)
         norm_fake_B = self.normalization((self.fake_B + 1) * 0.5)
         norm_real_B = self.normalization((self.real_B + 1) * 0.5)
@@ -126,7 +128,7 @@ class SCGModel(BaseModel):
         self.loss_idt_B = self.criterionIdt(self.real_B, self.idt_B) * l_idt if l_idt > 0 else 0
 
         # TODO
-        self.loss_reg = self.latent.abs().mean() * self.opt.lambda_reg
+        self.loss_reg = self.latent.abs().mean() * l_reg if l_reg > 0 else self.latent.abs().mean().item()
         self.loss_G = self.loss_G_s + self.loss_G_s_idt_B + self.loss_idt_B + self.loss_reg
         self.loss_G.backward()
 
