@@ -4,6 +4,7 @@ import itertools
 import dnnlib
 import legacy
 from models.simple_resnet import ResNet18
+from .scg_networks import Encoder
 from .base_model import BaseModel
 from . import losses
 
@@ -57,7 +58,7 @@ class SCGModel(BaseModel):
         # define the networks TODO
         # self.netG = networks.define_G(opt.input_nc, opt.output_nc, opt.ngf, opt.netG, opt.normG, not opt.no_dropout,
         #                        opt.init_type, opt.init_gain, opt.no_antialias, opt.no_antialias_up, self.gpu_ids, opt)
-        self.netG = ResNet18(num_outputs=256 * 2 if opt.vae_mode else 256).to(self.device)
+        self.netG = Encoder(num_outputs=256 * 2 if opt.vae_mode else 256).to(self.device)
         with dnnlib.util.open_url(opt.gen_network) as f:
             self.decoder = legacy.load_network_pkl(f)['G_ema'].to(self.device)
             self.set_requires_grad([self.decoder], False)
