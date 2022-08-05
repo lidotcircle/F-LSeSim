@@ -13,6 +13,7 @@ class ECUTModel(BaseModel):
         """
         parser.add_argument('--lambda_GAN', type=float, default=1.0, help='weight for GAN loss：GAN(G(X))')
         parser.add_argument('--lambda_NCE', type=float, default=1.0, help='weight for NCE loss: NCE(G(X), X)')
+        parser.add_argument('--lambda_identity', type=float, default=0.0, help='weight for identity loss: MSE(G(Y), Y)')
         parser.add_argument('--nce_idt', action='store_true', help='use NCE loss for identity mapping: NCE(G(Y), Y))')
         parser.add_argument('--nce_layers', type=str, default='4,7,9', help='compute NCE loss on which layers')
         parser.add_argument('--feature_net', type=str, default='vgg16', choices=['vgg16', 'efficientnet_lite', 'resnet18', 'learned'], help='network for extracting features')
@@ -55,8 +56,11 @@ class ECUTModel(BaseModel):
         self.loss_NEC = 0
         self.loss_NCE_Y = 0
 
-        if opt.nce_idt and self.isTrain:
-            self.loss_names += ['NCE_Y']
+        if (opt.nce_idt or opt.lambda_identity > 0 )and self.isTrain:
+            if opt.nce_idt:
+                self.loss_names += ['NCE_Y']
+            if opt.lambda_identity > 0:
+                self.loss_names += ['idt']
             self.visual_names += ['idt_B']
 
         if self.isTrain:
@@ -166,7 +170,7 @@ class ECUTModel(BaseModel):
 
     def forward(self):
         """Run forward pass; called by both functions <optimize_parameters> and <test>."""
-        cat_AB = self.opt.nce_idt and self.opt.isTrain
+        cat_AB = (self.opt.nce_idt or self.opt.lambda_identity) and self.opt.isTrain
         self.real = torch.cat((self.real_A, self.real_B), dim=0) if cat_AB else self.real_A
 
         if hasattr(self, 'idt_B'):
@@ -232,7 +236,12 @@ class ECUTModel(BaseModel):
         else:
             loss_NCE_both = self.loss_NCE
 
-        self.loss_G = self.loss_G_GAN + loss_NCE_both * self.opt.lambda_NCE
+        if self.opt.lambda_identity > 0:
+            self.loss_idt = self.criterionIdt(self.fake_B, self.real_B)
+        else:
+            self.loss_idt = 0
+
+        self.loss_G = self.loss_G_GAN + loss_NCE_both * self.opt.lambda_NCE + self.loss_idt * self.opt.lambda_identity
         return self.loss_G
 
     def calculate_NCE_loss(self, feat_net: torch.nn.Module, src, tgt):
