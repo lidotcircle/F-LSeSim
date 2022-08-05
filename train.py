@@ -79,7 +79,7 @@ if __name__ == '__main__':
             model.set_input(data)         # unpack data from dataset and apply preprocessing
             model.optimize_parameters()   # calculate loss functions, get gradients, update network weights
 
-            if total_iters % opt.display_freq == 0:   # display images on visdom and save images to a HTML file
+            if total_iters % opt.display_freq == 0 and not opt.disable_logger:   # display images on visdom and save images to a HTML file
                 save_result = total_iters % opt.update_html_freq == 0
                 sample_image()
                 model.compute_visuals()
@@ -104,7 +104,7 @@ if __name__ == '__main__':
                     visualizer.logger.send(validity_stats, "validity_stats", True)
                     print(json.dumps(validity_stats))
 
-            if total_iters % opt.print_freq == 0:    # print training losses and save logging information to the disk
+            if total_iters % opt.print_freq == 0 and not opt.disable_logger:    # print training losses and save logging information to the disk
                 losses = model.get_current_losses()
                 additional_stats = {
                     "g_param_norm":"G_Param_Norm",
