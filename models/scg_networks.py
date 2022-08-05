@@ -93,14 +93,14 @@ class FGGenerator(nn.Module):
         self.feat_128 = UpBlock(nfc[64], nfc[128])
         self.feat_256 = UpBlock(nfc[128], nfc[256])
 
-        self.se_64  = SEBlock(nfc[64], nfc[64])
-        self.se_128 = SEBlock(nfc[128], nfc[128])
+        self.se_64  = SEBlock(nfc[8], nfc[64])
+        self.se_128 = SEBlock(nfc[16], nfc[128])
         self.se_256 = SEBlock(nfc[32], nfc[256])
 
         self.to_big = conv2d(nfc[img_resolution], nc, 3, 1, 1, bias=True)
 
         if img_resolution > 256:
-            self.feat_512 = UpBlock(nfc[256], nfc[512])
+            self.feat_512 = UpBlock(nfc[64], nfc[512])
             self.se_512 = SEBlock(nfc[16], nfc[512])
         if img_resolution > 512:
             self.feat_1024 = UpBlock(nfc[512], nfc[1024])
@@ -120,8 +120,8 @@ class FGGenerator(nn.Module):
 
         feat_16 = self.feat_16(dfeat_8)
         feat_32 = self.feat_32(feat_16)
-        feat_64 = self.se_64(dfeat_64, self.feat_64(feat_32))
-        feat_128 = self.se_128(dfeat_128,  self.feat_128(feat_64))
+        feat_64 = self.se_64(dfeat_8, self.feat_64(feat_32))
+        feat_128 = self.se_128(feat_16,  self.feat_128(feat_64))
 
         if self.img_resolution >= 128:
             feat_last = feat_128
@@ -130,7 +130,7 @@ class FGGenerator(nn.Module):
             feat_last = self.se_256(feat_32, self.feat_256(feat_last))
 
         if self.img_resolution >= 512:
-            feat_last = self.se_512(feat_16, self.feat_512(feat_last))
+            feat_last = self.se_512(feat_64, self.feat_512(feat_last))
 
         if self.img_resolution >= 1024:
             feat_last = self.feat_1024(feat_last)
