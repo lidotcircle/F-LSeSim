@@ -9,7 +9,7 @@ from .transtyle import Transtyle, TransDiscriminator
 from .pregan_networks import MultiYAPatch, ResnetGenerator as ResnetPre, ResnetGeneratorV2 as ResnetPreAE, ResnetGeneratorV3 as ResnetAE, ResnetSepGenerator
 from .nlayer_prefocus_discriminator import NLayerPreFocusDiscriminator
 from .cvt import CvTGenerator, CvTDiscriminator
-from .scg_networks import Generator as FGGenerator, FGGenerator as FFGGenerator
+from .scg_networks import Generator as FGGenerator, FGGenerator as FFGGenerator, UncondGenerator
 
 
 ##################################################################################
@@ -50,6 +50,8 @@ def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, in
         net = FGGenerator(ngf=ngf)
     elif netG == 'fgen':
         net = FFGGenerator(ngf=ngf)
+    elif netG == 'uncond':
+        net = UncondGenerator()
     elif netG == 'resnet_preae':
         net = ResnetPreAE(
             input_nc, output_nc, ngf, n_blocks=opt.g_num_layers,

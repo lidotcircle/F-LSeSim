@@ -1,4 +1,5 @@
 import torch.nn.functional as F 
+import torch
 from torch import nn
 from pg_modules import blocks
 from pg_modules.blocks import UpBlockBig, UpBlockSmall, DownBlock, SEBlock, conv2d
@@ -33,6 +34,17 @@ class Encoder(nn.Module):
         x = F.adaptive_avg_pool2d(x, 1)
         x = x.view(x.size(0), -1)
         return self.out_layer(x)
+
+
+class UncondGenerator(nn.Module):
+    def __init__(self, ngf=128, img_resolution=256, z_dim=256):
+        super().__init__()
+        self.z_dim = z_dim
+        self.gen = FastganSynthesis(ngf=ngf, z_dim=z_dim, img_resolution=img_resolution,lite=False)
+
+    def forward(self, img: torch.Tensor, **kwargs):
+        z = torch.randn((img.size(0), 1, self.z_dim)).to(img.device)
+        return self.gen(z, c=None)
 
 
 class Generator(nn.Module):
