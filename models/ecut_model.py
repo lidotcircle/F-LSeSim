@@ -187,7 +187,8 @@ class ECUTModel(BaseModel):
 
     def compute_D_loss(self):
         """Calculate GAN loss for the discriminator"""
-        fake = self.fake_B.detach()
+        un = self.netG(self.real_A)
+        fake = un[0].detach() if isinstance(un, tuple) else un.detach()
         real = self.real_B
 
         # Fake; stop backprop to the generator by detaching fake_B
@@ -199,7 +200,7 @@ class ECUTModel(BaseModel):
         self.loss_D_real = loss_D_real.mean()
 
         # combine loss and calculate gradients
-        self.loss_D = (self.loss_D_fake + self.loss_D_real) * 0.5
+        self.loss_D = self.loss_D_fake + self.loss_D_real
 
         if self.opt.gan_mode == 'wgangp':
             self.loss_D_gp, gradients = networks.cal_gradient_penalty(self.netD, self.real_B, fake, self.device, lambda_gp=1)

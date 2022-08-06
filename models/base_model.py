@@ -7,7 +7,8 @@ from abc import ABC, abstractmethod
 from data import CustomDatasetDataLoader, create_dataset
 from . import networks
 from metrics.all_score import calculate_scores_given_paths, calculate_scores_given_iter
-from util.util import copyconf, tensor2im, save_image
+from util.util import copyconf
+from .utils import save_image
 
 
 class BaseModel(ABC):
@@ -302,14 +303,14 @@ class BaseModel(ABC):
                     bname = os.path.basename(img_path)
                     f, r = fake_B[i], real_B[i]
                     fp, rp = os.path.join(fake_B_image_path, bname), os.path.join(real_B_image_path, bname)
-                    save_image(tensor2im(f.unsqueeze(0)), fp)
-                    save_image(tensor2im(r.unsqueeze(0)), rp)
+                    save_image(f, fp)
+                    save_image(r, rp)
 
                     if fake_A is not None and real_A is not None:
                         f, r = fake_A[i], real_A[i]
                         fp, rp = os.path.join(fake_A_image_path, bname), os.path.join(real_A_image_path, bname)
-                        save_image(tensor2im(f.unsqueeze(0)), fp)
-                        save_image(tensor2im(r.unsqueeze(0)), rp)
+                        save_image(f, fp)
+                        save_image(r, rp)
 
             action = save_action
 

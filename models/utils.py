@@ -3,7 +3,12 @@ import math
 import warnings
 import numpy as np
 import cv2
+import PIL.Image
 
+
+def save_image(img: torch.Tensor, path: str):
+    img = (img.permute(1, 2, 0) * 127.5 + 128).clamp(0, 255).to(torch.uint8)
+    PIL.Image.fromarray(img.cpu().numpy(), 'RGB').save(path)
 
 def cam(x, size = 256):
     x = x - np.min(x)
