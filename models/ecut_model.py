@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 from models import losses
 from .base_model import BaseModel
 from . import networks
@@ -86,7 +87,6 @@ class ECUTModel(BaseModel):
                 raise NotImplemented(opt.feature_net)
 
             # define loss functions
-            self.criterionGAN = losses.GANLoss(opt.gan_mode).to(self.device)
             self.criterionNCE = []
 
             for nce_layer in self.nce_layers:
@@ -185,24 +185,17 @@ class ECUTModel(BaseModel):
         if self.real.size(0) > self.real_A.size(0):
             self.idt_B = self.fake[self.real_A.size(0):]
 
-    def compute_visuals(self):
-        """Calculate additional output images for visdom and HTML visualization"""
-        pred_fake = self.netD(self.fake_B)
-        pred_real = self.netD(self.real_B)
-        self.validation_loss_fake = self.criterionGAN(pred_fake, False).mean().item()
-        self.validation_loss_real = self.criterionGAN(pred_real, True).mean().item()
-
     def compute_D_loss(self):
         """Calculate GAN loss for the discriminator"""
         fake = self.fake_B.detach()
         real = self.real_B
 
         # Fake; stop backprop to the generator by detaching fake_B
-        pred_fake = self.netD(fake)
-        self.loss_D_fake = self.criterionGAN(pred_fake, False).mean()
+        gen_logits = self.netD(fake)
+        self.loss_D_fake = (F.relu(torch.ones_like(gen_logits) + gen_logits)).mean()
         # Real
-        self.pred_real = self.netD(real)
-        loss_D_real = self.criterionGAN(self.pred_real, True)
+        real_logits = self.netD(real)
+        loss_D_real = (F.relu(torch.ones_like(real_logits) - real_logits)).mean()
         self.loss_D_real = loss_D_real.mean()
 
         # combine loss and calculate gradients
@@ -220,8 +213,8 @@ class ECUTModel(BaseModel):
 
         # First, G(A) should fake the discriminator
         if self.opt.lambda_GAN > 0.0:
-            pred_fake = self.netD(fake)
-            self.loss_G_GAN = self.criterionGAN(pred_fake, True).mean() * self.opt.lambda_GAN
+            gen_logits = self.netD(fake)
+            self.loss_G_GAN = (-gen_logits).mean()
         else:
             self.loss_G_GAN = 0.0
 
@@ -266,8 +259,8 @@ class ECUTModel(BaseModel):
     def compute_visuals(self):
         super().compute_visuals()
         if hasattr(self, 'netD'):
-            pred_fake_B = self.netD(self.fake_B)
-            pred_real_B = self.netD(self.real_B)
-            self.val_loss_G = self.criterionGAN(pred_fake_B, True)
-            self.val_loss_D_real = self.criterionGAN(pred_real_B, True)
-            self.val_loss_D_fake = self.criterionGAN(pred_fake_B, False)
+            gen_logits = self.netD(self.fake_B)
+            real_logits = self.netD(self.real_B)
+            self.val_loss_fake = (F.relu(torch.ones_like(gen_logits) + gen_logits)).mean()
+            self.val_loss_real = (F.relu(torch.ones_like(real_logits) - real_logits)).mean()
+            self.val_loss_G = (-gen_logits).mean()

@@ -67,7 +67,7 @@ def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, in
         net = stylegan_networks.StyleGAN2Generator(input_nc, output_nc, ngf, opt=opt)
     else:
         raise NotImplementedError('Generator model name [%s] is not recognized' % netG)
-    return cyclegan_networks.init_net(net, init_type, init_gain, gpu_ids, initialize_weights=('stylegan2' not in netG))
+    return cyclegan_networks.init_net(net, init_type, init_gain, gpu_ids, initialize_weights=(netG not in ['stylegan2', 'fastgan', 'fgen', 'uncond']))
 
 
 def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal', init_gain=0.02, no_antialias=False, gpu_ids=[], opt=None):
@@ -114,9 +114,7 @@ def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal'
     else:
         raise NotImplementedError('Discriminator model name [%s] is not recognized' % netD)
     
-    if netD == 'proj_eff':
-        return net.to(gpu_ids[0])
-    return cyclegan_networks.init_net(net, init_type, init_gain, gpu_ids, initialize_weights=('stylegan2' not in netD))
+    return cyclegan_networks.init_net(net, init_type, init_gain, gpu_ids, initialize_weights=(netD not in ['stylegan2', 'proj_eff']))
 
 
 def define_F(input_nc, netF, norm='batch', use_dropout=False, init_type='normal', init_gain=0.02, no_antialias=False, gpu_ids=[], opt=None):
