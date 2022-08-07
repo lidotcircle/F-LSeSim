@@ -23,7 +23,7 @@ class WDVisualizer():
         prefix = opt.logger_prefix
         if prefix is None or prefix == '':
             prefix = f"[{opt.name}-" + time.strftime("%m-%d %H:%M:%S", time.localtime()) + "]"
-        self.logger = TdLogger(opt.logger_endpoint, f"[{opt.name}]", 1, ("admin", "123456"), group_prefix=prefix, disabled=opt.disable_logger, priority=opt.logger_priority)
+        self.logger = TdLogger(opt.logger_endpoint, f"[{opt.name}]", opt.logger_queuesize, ("admin", "123456"), group_prefix=prefix, disabled=opt.disable_logger, priority=opt.logger_priority)
         self.log_name = f"{opt.name}.log"
         self.opt = opt
 
