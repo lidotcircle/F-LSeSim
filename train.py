@@ -30,7 +30,8 @@ import util.util as util
 
 
 if __name__ == '__main__':
-    opt = TrainOptions().parse()   # get training options
+    trainOpt = TrainOptions()
+    opt = trainOpt.parse()   # get training options
     dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
     dataset_size = len(dataset)    # get the number of images in the dataset.
     print('The number of training images = %d' % dataset_size)
@@ -49,6 +50,7 @@ if __name__ == '__main__':
         logger.info(msg)
         print(msg)
     total_iters = len(dataset) * (opt.epoch_count - 1)    # the total number of training iterations
+    logger.send(trainOpt.getMessage(trainOpt.opt), group='training-options', direct=True)
 
     if opt.total_iters > 0:
         total_epoch = opt.total_iters / dataset_size

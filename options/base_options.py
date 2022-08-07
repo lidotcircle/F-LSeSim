@@ -110,12 +110,7 @@ class BaseOptions():
         self.parser = parser
         return parser.parse_args()
 
-    def print_options(self, opt):
-        """Print and save options
-
-        It will print both current options and default values(if different).
-        It will save options into a text file / [checkpoints_dir] / opt.txt
-        """
+    def getMessage(self, opt):
         message = ''
         message += '----------------- Options ---------------\n'
         for k, v in sorted(vars(opt).items()):
@@ -125,6 +120,15 @@ class BaseOptions():
                 comment = '\t[default: %s]' % str(default)
             message += '{:>25}: {:<30}{}\n'.format(str(k), str(v), comment)
         message += '----------------- End -------------------'
+        return message
+
+    def print_options(self, opt):
+        """Print and save options
+
+        It will print both current options and default values(if different).
+        It will save options into a text file / [checkpoints_dir] / opt.txt
+        """
+        message = self.getMessage(opt)
         print(message)
 
         # save to the disk

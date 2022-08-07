@@ -81,7 +81,7 @@ class TdLogger:
     def error(self, msg: str):
         self.send({"message": msg, "level": "error"}, group=self.default_group + '-log', direct = True)
 
-    def send(self, data: dict, group: str = "", direct: bool = False, priority=0):
+    def send(self, data: Union[dict, str] , group: str = "", direct: bool = False, priority=0):
         group = group if group != "" else self.default_group
         if direct or self.bufferQueueSize < 2:
             self.__sendSData(data, group, priority)
@@ -222,7 +222,7 @@ class HttpLogger:
         obj = json.loads(payload)
         data = obj["data"]
         group = obj["group"]
-        await self.postSData(session, json.dumps(data), group)
+        await self.postSData(session, data if isinstance(data,str) else json.dumps(data), group)
 
     async def handler_listofsdata(self, session: ClientSession, payload: str):
         obj = json.loads(payload)
@@ -230,7 +230,8 @@ class HttpLogger:
         thelist = []
         for msg in obj:
             assert 'group' in msg and 'data' in msg
-            thelist.append({'group': msg["group"], 'data': json.dumps(msg['data'])})
+            data = msg['data']
+            thelist.append({'group': msg["group"], 'data': data if isinstance(data, str) else json.dumps(data)})
         await self.postListofSData(session, thelist)
 
     async def handler_blob(self, session: ClientSession, payload: str):
