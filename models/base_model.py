@@ -326,7 +326,7 @@ class BaseModel(ABC):
         num_test: int = 50
     ):
         for i, data in enumerate(dataset):
-            if i >= num_test:  # only apply our model to opt.num_test images.
+            if i >= num_test or i >= len(dataset):  # only apply our model to opt.num_test images.
                 break
 
             self.set_input(data)  # unpack data from data loader
